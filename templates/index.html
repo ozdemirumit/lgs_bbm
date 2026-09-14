@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Sınavlarım</h1>
+  <form method="post" action="{{ url_for('sync') }}">
+    <button class="btn btn-primary">Bilfen'den Senkronize Et</button>
+  </form>
+</div>
+
+{% if not data %}
+  <div class="alert alert-warning">
+    Henüz veri yok. Önce <code>python login.py</code> ile giriş yapın, sonra yukarıdaki
+    "Senkronize Et" butonuna basın.
+  </div>
+{% else %}
+  <div class="row">
+    <div class="col-md-7">
+      <table class="table table-striped bg-white">
+        <thead><tr><th>Sınav</th><th>Tarih</th><th></th></tr></thead>
+        <tbody>
+        {% for exam in data.exams %}
+          <tr>
+            <td>{{ exam.name }}</td>
+            <td>{{ exam.date }}</td>
+            <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('exam_detail', exam_id=exam.id) }}">İncele</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="col-md-5">
+      <h2 class="h5">En Zayıf Konular</h2>
+      <ul class="list-group">
+      {% for w in weak[:8] %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ w.topic }}</strong><br>
+            <small class="text-muted">{{ w.subject_name }} · {{ w.exam_name }}</small>
+          </div>
+          <a class="btn btn-sm btn-outline-danger" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">Çalış</a>
+        </li>
+      {% else %}
+        <li class="list-group-item text-muted">Tebrikler, zayıf konu tespit edilmedi.</li>
+      {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

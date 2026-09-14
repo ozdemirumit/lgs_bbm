@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4">{{ exam.name }}</h1>
+<p class="text-muted">{{ exam.date }}</p>
+
+<a class="btn btn-success mb-3" href="{{ url_for('export_exam', exam_id=exam.id) }}">Word Raporu İndir</a>
+
+<table class="table bg-white">
+<thead><tr><th>Ders</th><th>Doğru</th><th>Yanlış</th><th>Boş</th></tr></thead>
+<tbody>
+{% for s in exam.subjects %}
+<tr><td>{{ s.name }}</td><td>{{ s.correct }}</td><td>{{ s.wrong }}</td><td>{{ s.empty }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h2 class="h5 mt-4">Zayıf Konular</h2>
+<ul class="list-group">
+{% for w in weak %}
+<li class="list-group-item d-flex justify-content-between align-items-center">
+  <div>
+    <strong>{{ w.topic }}</strong> ({{ w.subject_name }})<br>
+    <small class="text-muted">Sen: %{{ '%.1f'|format(w.student) }} · Akran ort.: %{{ '%.1f'|format(w.peer_avg) }}</small>
+  </div>
+  <a class="btn btn-sm btn-outline-danger" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=w.subject_index, kID=w.kID) }}">Çalış</a>
+</li>
+{% else %}
+<li class="list-group-item text-muted">Bu sınavda zayıf konu tespit edilmedi.</li>
+{% endfor %}
+</ul>
+{% endblock %}

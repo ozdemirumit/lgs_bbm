@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4">{{ topic.name }}</h1>
+<p class="text-muted">{{ subj.name }} · Senin puanın: %{{ '%.1f'|format(topic.student) }}</p>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% endif %}
+
+{% if wrong_questions %}
+<div class="card mb-4 border-danger">
+  <div class="card-header bg-danger text-white">Gerçekten Yanlış Yaptığın Soru(lar)</div>
+  <div class="card-body">
+    {% for wq in wrong_questions %}
+      <p><strong>{{ loop.index }}. {{ wq.soru }}</strong></p>
+      <ul class="list-unstyled">
+        {% for key, val in wq.secenekler.items() %}
+          <li>{{ key }}) {{ val }}{% if wq.isaretli_dogru_cevap == key %} <span class="badge bg-success">doğru cevap</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if content %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5">Konu Anlatımı</h2>
+    <div style="white-space: pre-wrap;">{{ content.anlatim }}</div>
+  </div>
+</div>
+
+<h2 class="h5">Benzer Sorular</h2>
+{% for q in content.sorular %}
+<div class="card mb-3">
+  <div class="card-body">
+    <p><strong>{{ loop.index }}. {{ q.soru }}</strong></p>
+    <ul class="list-unstyled">
+      {% for key, val in q.secenekler.items() %}
+        <li>{{ key }}) {{ val }}</li>
+      {% endfor %}
+    </ul>
+    <details>
+      <summary class="btn btn-sm btn-outline-secondary">Cevabı Göster</summary>
+      <p class="mt-2"><strong>Doğru cevap: {{ q.dogru_cevap }}</strong><br>{{ q.cozum }}</p>
+    </details>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<a href="{{ url_for('exam_detail', exam_id=exam.id) }}" class="btn btn-secondary">Geri Dön</a>
+{% endblock %}

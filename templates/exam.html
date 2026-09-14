@@ -26,7 +26,7 @@
   <div>
     <strong>{{ w.topic }}</strong> ({{ w.subject_name }})
     {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
-    <small class="text-muted">Sen: %{{ '%.1f'|format(w.student) }} · Akran ort.: %{{ '%.1f'|format(w.peer_avg) }}</small>
+    <small class="text-muted">Sen: %{{ '%.1f'|format(w.student) }}{% if w.peer_avg is not none %} · Akran ort.: %{{ '%.1f'|format(w.peer_avg) }}{% endif %}</small>
   </div>
   <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
 </li>

@@ -15,10 +15,20 @@ ile konu anlatımı ve benzer sorular üreten bir uygulama.
    şıkları çıkarılıyor. Not: siteden soru numarası ↔ konu eşleşmesi doğrudan
    gelmiyor; bir derste tek zayıf konu varsa eşleşme kesin, birden fazla zayıf
    konu varsa o dersin tüm yanlışları ortak referans olarak kullanılıyor.
-3. Her zayıf konu için Claude, seviyeye uygun bir konu anlatımı ve 5 adet özgün
-   benzer soru (cevap anahtarı + çözümüyle) üretiyor.
-4. Sonuçlar web arayüzünde gösteriliyor; her sınav için Word (.docx) raporu
-   olarak da indirilebiliyor.
+3. Her zayıf konu için Claude, **web search ile son 5 yılın LGS sorularını
+   araştırıp** seviyeye uygun bir konu anlatımı ve en fazla 25 adet özgün
+   benzer soru (cevap anahtarı + çözümüyle) üretiyor. Bu sorulardan bir kısmı
+   gerçek LGS sorularının tarzından/zorluğundan ilham alınarak yazılıyor
+   (birebir kopya değil) ve hangi yıl/tarza yakın olduğu belirtiliyor. Tablo,
+   sayı doğrusu, geometrik şekil veya grafik gerektiren yerlerde Claude gerçek
+   bir görsel (HTML tablo / SVG çizim) üretiyor, sadece yazıyla anlatmıyor.
+   Bu üretim (özellikle 25 soru + araştırma nedeniyle) birkaç dakika
+   sürebilir; sonuç diskte önbelleklenir, bir daha aynı konuyu açtığınızda
+   anında gelir.
+4. Sonuçlar web arayüzünde (tablo/grafikleriyle birlikte) gösteriliyor; her
+   sınav için Word (.docx) raporu olarak da indirilebiliyor (tablolar gerçek
+   Word tablosuna çevrilir, SVG şekiller için web uygulamasına bakma notu
+   düşülür).
 
 ## Kurulum
 

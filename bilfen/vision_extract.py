@@ -64,7 +64,10 @@ def extract_question_text(image_path, cache_key, force=False):
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         raise RuntimeError("Vision yanitindan JSON cikarilamadi: " + text[:300])
-    data = json.loads(match.group(0))
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Vision yaniti JSON olarak ayristirilamadi: {e}")
 
     cache_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return data

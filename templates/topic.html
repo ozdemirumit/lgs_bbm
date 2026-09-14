@@ -23,6 +23,10 @@
           <li>{{ key }}) {{ val }}{% if wq.isaretli_dogru_cevap == key %} <span class="badge bg-success">doğru cevap</span>{% endif %}</li>
         {% endfor %}
       </ul>
+      {% if wq.image_url %}
+        <p class="text-muted small mb-1">Orijinal soru görseli (tablo/şekil varsa burada görünür):</p>
+        <img src="{{ wq.image_url }}" class="img-fluid border rounded mb-3" alt="Yanlış yapılan sorunun video çözümünden alınan görseli">
+      {% endif %}
     {% endfor %}
   </div>
 </div>
@@ -32,7 +36,7 @@
 <div class="card mb-4">
   <div class="card-body">
     <h2 class="h5">Konu Anlatımı</h2>
-    <div style="white-space: pre-wrap;">{{ content.anlatim }}</div>
+    <div class="content-body">{{ content.anlatim | markdown | safe }}</div>
   </div>
 </div>
 
@@ -41,6 +45,12 @@
 <div class="card mb-3">
   <div class="card-body">
     <p><strong>{{ loop.index }}. {{ q.soru }}</strong></p>
+    {% if q.kaynak_notu %}
+      <p><span class="badge bg-info text-dark">LGS'den ilham alındı</span> <small class="text-muted">{{ q.kaynak_notu }}</small></p>
+    {% endif %}
+    {% if q.gorsel_html %}
+      <div class="my-2">{{ q.gorsel_html | safe }}</div>
+    {% endif %}
     <ul class="list-unstyled">
       {% for key, val in q.secenekler.items() %}
         <li>{{ key }}) {{ val }}</li>

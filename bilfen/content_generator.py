@@ -2,6 +2,7 @@
 import json
 import os
 import re
+from datetime import date
 from pathlib import Path
 
 import anthropic
@@ -10,27 +11,54 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 GEN_DIR = DATA_DIR / "generated"
 
 MODEL = "claude-sonnet-5"
+MAX_SIMILAR_QUESTIONS = 25
 
 PROMPT_TEMPLATE = """Sen deneyimli bir {grade}. sinif {subject_name} ogretmenisin. \
 Bir ogrenci son sinavda "{topic_name}" konusunda akranlarinin gerisinde kaldi \
 (ogrencinin basari yuzdesi: %{student_score:.1f}, akran ortalamasi: %{peer_avg:.1f}).
 {wrong_questions_block}
 Gorevin:
-1. "{topic_name}" konusunu {grade}. sinif seviyesine uygun, net, ornekli ve \
+1. Web search araciyla son 5 yilda (yaklasik {year_from}-{year_to}) LGS sinavinda \
+"{topic_name}" konusuyla ilgili cikmis sorulari arastir (MEB LGS gecmis sorulari, \
+soru bankasi siteleri vb.). Bu, sorularin gercek LGS zorluk seviyesine ve tarzina \
+uygun olmasini saglamak icin.
+2. "{topic_name}" konusunu {grade}. sinif seviyesine uygun, net, ornekli ve \
 ogrencinin kendi basina okuyup anlayabilecegi bir konu anlatimi olarak yaz. \
 Ogrencinin yukarida verilmisse gercekten yanlis yaptigi soru(lar)daki hataya/kavram \
 yanilgisina ozellikle deginmeye calis.
-2. Bu konuyla ilgili tamamen OZGUN, sinav formatina benzer 5 adet cikmis soruya \
-benzer cok secmeli (A, B, C, D) soru uret (yukaridaki gercek sorularin BIREBIR \
-kopyasi olmasin, ayni kavrami/zorluk seviyesini test eden yeni sorular olsun). \
-Her sorunun dogru cevabini ve kisa cozum aciklamasini ekle.
+3. Bu konuyla ilgili en fazla {num_questions} adet cok secmeli (A, B, C, D) \
+soru uret (konu yeterince genisse {num_questions} adete kadar cikabilirsin, \
+daha dar bir konuysa daha az ama en az 10 adet olsun; asla {num_questions} \
+adedi GECME). Sorularin yaklasik dortte biri, arastirdigin gercek LGS \
+sorularinin zorluk seviyesine/tarzina/soru kokenine (ornegin bir grafik \
+yorumlama, bir gunluk hayat problemi vb.) yakin olacak sekilde OZGUN olarak \
+yazilsin (gercek sorunun BIREBIR kopyasi OLMASIN, sadece ilham alinsin); \
+kalanlar konuyu pekistiren, kolaydan zora dogru siralanmis standart sorular \
+olsun. Her soru icin, gercek bir LGS sorusundan ilham alindiysa hangi \
+yila/tarza ait oldugunu kisaca belirt (alinmadiysa null birak). Her sorunun \
+dogru cevabini ve kisa cozum aciklamasini ekle.
 
-SADECE asagidaki JSON formatinda yanit ver, baska hicbir aciklama veya metin ekleme:
+GORSELLER - ONEMLI: Konu anlatiminda veya bir soruda tablo, sayi dogrusu, \
+geometrik sekil, grafik (sutun/cizgi/pasta) gibi gorsel bir oge GEREKIYORSA \
+bunu SADECE YAZIYLA ANLATMA, gercekten ciz:
+- Tablo icin gercek HTML <table> etiketi kullan (anlatim alaninin markdown \
+metni icine dogrudan gomebilirsin).
+- Sayi dogrusu, geometrik sekil (ucgen, dortgen, aci, vb.) veya grafik icin \
+kucuk, sade bir inline SVG uret (orn. <svg viewBox="0 0 300 150" ...>...</svg>), \
+acik renk zeminde koyu cizgiler/metinle, olcekli ve okunakli olsun.
+- Bir soru gorsel gerektiriyorsa, o sorunun JSON objesine "gorsel_html" alani \
+olarak bu HTML/SVG'yi ekle (gerekmiyorsa null birak). Anlatimdaki gorseller \
+dogrudan "anlatim" metninin icine markdown ile karisik HTML olarak gomulebilir.
+
+SADECE asagidaki JSON formatinda yanit ver, baska hicbir aciklama veya metin ekleme \
+(web search sonuclarini veya dusunce surecini JSON disinda yazma):
 {{
-  "anlatim": "markdown formatinda konu anlatimi",
+  "anlatim": "markdown formatinda konu anlatimi (gerekince icine HTML tablo/SVG gomulu)",
   "sorular": [
     {{"soru": "...", "secenekler": {{"A": "...", "B": "...", "C": "...", "D": "..."}}, \
-"dogru_cevap": "A", "cozum": "..."}}
+"dogru_cevap": "A", "cozum": "...", "kaynak_notu": "orn. 2022 LGS tarzi bir grafik \
+sorusundan ilham alindi, ya da null", "gorsel_html": "gerekiyorsa HTML tablo/SVG, \
+yoksa null"}}
   ]
 }}"""
 
@@ -95,6 +123,7 @@ def generate_topic_content(
         if cache_path.exists() and not force:
             return json.loads(cache_path.read_text(encoding="utf-8"))
 
+    this_year = date.today().year
     prompt = PROMPT_TEMPLATE.format(
         grade=grade,
         subject_name=subject_name,
@@ -102,27 +131,55 @@ def generate_topic_content(
         student_score=student_score,
         peer_avg=peer_avg,
         wrong_questions_block=_format_wrong_questions_block(wrong_questions),
+        year_from=this_year - 5,
+        year_to=this_year,
+        num_questions=MAX_SIMILAR_QUESTIONS,
     )
 
     client = _client()
-    try:
-        resp = client.messages.create(
-            model=MODEL,
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except anthropic.AuthenticationError:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY gecersiz. .env dosyasindaki anahtari "
-            "console.anthropic.com adresinden aldiginiz gecerli bir anahtarla degistirin."
-        )
-    except anthropic.APIError as e:
-        raise RuntimeError(f"Claude API hatasi: {e}")
-    text = "".join(block.text for block in resp.content if block.type == "text")
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if not match:
-        raise RuntimeError("Model yanitindan JSON cikarilamadi: " + text[:500])
-    data = json.loads(match.group(0))
+    data = None
+    last_error = None
+    for attempt in range(3):  # yarida kesilen/bozuk JSON icin birkac kez tekrar dene
+        try:
+            # 25 soruya kadar + web search uzun surebildigi icin streaming kullanilir
+            # (SDK, >10 dk surebilecek istekler icin streaming zorunlu tutuyor).
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=28000,
+                tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                resp = stream.get_final_message()
+        except anthropic.AuthenticationError:
+            raise RuntimeError(
+                "ANTHROPIC_API_KEY gecersiz. .env dosyasindaki anahtari "
+                "console.anthropic.com adresinden aldiginiz gecerli bir anahtarla degistirin."
+            )
+        except anthropic.APIError as e:
+            raise RuntimeError(f"Claude API hatasi: {e}")
+
+        truncated = resp.stop_reason == "max_tokens"
+        text = "".join(block.text for block in resp.content if block.type == "text")
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            last_error = (
+                "Model yanitindan JSON cikarilamadi"
+                + (" (yanit token limitine takilip yarida kesildi)." if truncated else ".")
+                + " " + text[-300:]
+            )
+            continue
+        try:
+            data = json.loads(match.group(0))
+            break
+        except json.JSONDecodeError as e:
+            last_error = (
+                f"Model yaniti JSON olarak ayristirilamadi ({e})."
+                + (" Yanit token limitine takilip yarida kesilmis olabilir." if truncated else "")
+            )
+            continue
+
+    if data is None:
+        raise RuntimeError(last_error or "Model yanitindan icerik uretilemedi.")
 
     if cache_path:
         cache_path.write_text(

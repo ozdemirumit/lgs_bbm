@@ -1,9 +1,11 @@
 import json
 import os
+import re
 from pathlib import Path
 
+import markdown as markdown_lib
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, send_file, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, url_for
 
 load_dotenv()
 
@@ -12,9 +14,36 @@ from bilfen import analyzer, content_generator, docx_export, login_flow, scraper
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 EXAMS_PATH = DATA_DIR / "exams.json"
+IMAGES_DIR = DATA_DIR / "question_images"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret")
+
+
+_SVG_RE = re.compile(r"<svg[\s\S]*?</svg>")
+
+
+@app.template_filter("markdown")
+def render_markdown(text):
+    """Konu anlatimini markdown->HTML'e cevirir. <table> Python-Markdown'in
+    taninan blok etiketi oldugu icin sorunsuz gecer, ama <svg> taninmadigindan
+    paragraf icine al(n)ip satirlar arasina <br> sokularak bozuluyordu - bu
+    yuzden SVG'ler markdown'a girmeden once cikarilip sonradan aynen geri
+    konuluyor."""
+    if not text:
+        return ""
+    protected = []
+
+    def _stash(m):
+        protected.append(m.group(0))
+        return f"\n\nSVGPLACEHOLDER{len(protected) - 1}\n\n"
+
+    text = _SVG_RE.sub(_stash, text)
+    html = markdown_lib.markdown(text, extensions=["tables", "nl2br"])
+    for i, svg in enumerate(protected):
+        html = re.sub(rf"<p>\s*SVGPLACEHOLDER{i}\s*</p>", svg, html)
+        html = html.replace(f"SVGPLACEHOLDER{i}", svg)
+    return html
 
 
 def load_data():
@@ -23,8 +52,15 @@ def load_data():
     return json.loads(EXAMS_PATH.read_text(encoding="utf-8"))
 
 
+@app.route("/media/question_images/<path:filename>")
+def question_image(filename):
+    return send_from_directory(IMAGES_DIR, filename)
+
+
 def get_wrong_question_texts(exam_id, subj):
     """Bir dersteki tum yanlis sorularin (varsa) goruntudeki metnini cikarir.
+    Gercek ekran goruntusunun URL'sini de ekler (tablo/grafik gibi gorseller
+    metne cikan ozette kaybolabildigi icin, orijinal goruntu de gosterilir).
     Not: siteden soru<->konu eslesmesi gelmez; bu yuzden birden fazla zayif
     konu varsa ayni dersin yanlislarinin tumu ortak baglam olarak kullanilir."""
     results = []
@@ -35,9 +71,11 @@ def get_wrong_question_texts(exam_id, subj):
             data = vision_extract.extract_question_text(
                 q["image"], cache_key=f"{exam_id}_{subj['index']}_{q['no']}"
             )
-            results.append(data)
         except Exception:
             continue
+        data = dict(data)
+        data["image_url"] = url_for("question_image", filename=Path(q["image"]).name)
+        results.append(data)
     return results
 
 
@@ -184,4 +222,6 @@ def export_exam(exam_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # threaded=True: bir konu icin AI uretimi birkac dakika surebiliyor (25 soru +
+    # web search); bu sirada diger sayfalarda gezinebilmek icin.
+    app.run(debug=True, port=5000, threaded=True)

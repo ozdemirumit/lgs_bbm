@@ -22,28 +22,49 @@ app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret")
 
 
 _SVG_RE = re.compile(r"<svg[\s\S]*?</svg>")
+_DISPLAY_MATH_RE = re.compile(r"\$\$[\s\S]*?\$\$")
+_INLINE_MATH_RE = re.compile(r"\$[^\$\n]+?\$")
 
 
 @app.template_filter("markdown")
 def render_markdown(text):
-    """Konu anlatimini markdown->HTML'e cevirir. <table> Python-Markdown'in
-    taninan blok etiketi oldugu icin sorunsuz gecer, ama <svg> taninmadigindan
-    paragraf icine al(n)ip satirlar arasina <br> sokularak bozuluyordu - bu
-    yuzden SVG'ler markdown'a girmeden once cikarilip sonradan aynen geri
-    konuluyor."""
+    """Konu anlatimini markdown->HTML'e cevirir.
+
+    Python-Markdown <table> gibi taninan blok etiketlerini oldugu gibi
+    biraktigi halde <svg> gibi tanimadigi etiketleri paragraf icine alip
+    satirlar arasina <br> sokarak bozuyor; ayni sekilde LaTeX
+    formullerindeki $, _, ^ gibi karakterler de markdown sozdizimiyle
+    (vurgu vb.) karisabiliyor. Bu yuzden SVG ve LaTeX ($...$, $$...$$)
+    bloklari markdown'a girmeden once cikarilip donusumden sonra aynen geri
+    konuluyor; LaTeX'in kendisi tarayicida MathJax ile render ediliyor
+    (bkz. base.html)."""
     if not text:
         return ""
-    protected = []
+    block_protected = []
+    inline_protected = []
 
-    def _stash(m):
-        protected.append(m.group(0))
-        return f"\n\nSVGPLACEHOLDER{len(protected) - 1}\n\n"
+    def _stash_block(m):
+        block_protected.append(m.group(0))
+        return f"\n\nZZBLOCKZZ{len(block_protected) - 1}\n\n"
 
-    text = _SVG_RE.sub(_stash, text)
+    def _stash_inline(m):
+        inline_protected.append(m.group(0))
+        return f"ZZINLINEZZ{len(inline_protected) - 1}"
+
+    text = _SVG_RE.sub(_stash_block, text)
+    text = _DISPLAY_MATH_RE.sub(_stash_block, text)
+    text = _INLINE_MATH_RE.sub(_stash_inline, text)
+
     html = markdown_lib.markdown(text, extensions=["tables", "nl2br"])
-    for i, svg in enumerate(protected):
-        html = re.sub(rf"<p>\s*SVGPLACEHOLDER{i}\s*</p>", svg, html)
-        html = html.replace(f"SVGPLACEHOLDER{i}", svg)
+
+    for i, chunk in enumerate(block_protected):
+        # chunk (LaTeX/SVG) '\t', '\1' gibi ters egik cizgili diziler icerebilir;
+        # re.sub'a duz string olarak verilirse bunlari kacis dizisi sanip hata
+        # verir, bu yuzden lambda ile degismeden eklenmesi saglaniyor.
+        html = re.sub(rf"<p>\s*ZZBLOCKZZ{i}\s*</p>", lambda m, c=chunk: c, html)
+        html = html.replace(f"ZZBLOCKZZ{i}", chunk)
+    for i, chunk in enumerate(inline_protected):
+        html = html.replace(f"ZZINLINEZZ{i}", chunk)
     return html
 
 
@@ -104,6 +125,7 @@ def get_wrong_question_texts(exam_id, subj):
             continue
         data = dict(data)
         data["image_url"] = url_for("question_image", filename=Path(q["image"]).name)
+        data["image_path"] = q["image"]
         results.append(data)
     return results
 

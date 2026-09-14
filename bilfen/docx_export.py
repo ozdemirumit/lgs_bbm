@@ -2,58 +2,109 @@
 
 Web arayuzunde konu anlatimi/sorular icinde HTML tablo ve SVG sekiller
 olabilir (bkz. content_generator). Word bunlari dogrudan render edemez:
-tablolar gercek bir docx tablosuna cevrilir, SVG'ler icin bir not birakilir.
+tablolar gercek bir docx tablosuna, SVG'ler svglib ile PNG'ye cevrilip
+gercek bir resim olarak gomulur.
 """
+import io
 import re
+import tempfile
 from pathlib import Path
 
 from docx import Document
+from docx.shared import Inches
+
+try:
+    from reportlab.graphics import renderPM
+    from svglib.svglib import svg2rlg
+
+    _SVG_SUPPORT = True
+except ImportError:  # svglib/reportlab kurulu degilse zarif sekilde geri dus
+    _SVG_SUPPORT = False
 
 
 def _strip_tags(text):
-    text = re.sub(r"<svg[\s\S]*?</svg>", "[Şekil: bu görseli web uygulamasında görebilirsiniz]", text)
-    text = re.sub(r"<[^>]+>", "", text)
-    return text
+    return re.sub(r"<[^>]+>", "", text)
 
 
-def _extract_tables(html):
-    """HTML icindeki <table> bloklarini satir/hucre listesi olarak cikarir,
-    geri kalan metni bir yer tutucuyla birlikte dondurur."""
-    tables = []
+def _svg_to_png_bytes(svg_markup, width_px=550):
+    """SVG'yi Word'e gomulebilecek bir PNG'ye cevirir. Basarisiz olursa None doner."""
+    if not _SVG_SUPPORT:
+        return None
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            svg_path = Path(tmp_dir) / "figure.svg"
+            svg_path.write_text(svg_markup, encoding="utf-8")
+            drawing = svg2rlg(str(svg_path))
+            if drawing is None or not drawing.width:
+                return None
+            scale = width_px / drawing.width
+            drawing.width *= scale
+            drawing.height *= scale
+            drawing.scale(scale, scale)
+            buf = io.BytesIO()
+            renderPM.drawToFile(drawing, buf, fmt="PNG")
+            return buf.getvalue()
+    except Exception:
+        return None
 
-    def repl(m):
-        tables.append(m.group(0))
-        return f"\x00TABLE{len(tables) - 1}\x00"
 
-    remaining = re.sub(r"<table[\s\S]*?</table>", repl, html)
-    parsed_tables = []
-    for t in tables:
-        rows = re.findall(r"<tr[^>]*>([\s\S]*?)</tr>", t)
-        parsed_rows = []
-        for row in rows:
+def _extract_blocks(html):
+    """<table> ve <svg> bloklarini metinden cikarip yer tutucuyla degistirir.
+    (kalan_metin, blocks) dondurur; blocks[i] = ("table", satirlar) veya
+    ("svg", ham_svg_metni)."""
+    blocks = []
+
+    def repl_table(m):
+        rows = []
+        for row in re.findall(r"<tr[^>]*>([\s\S]*?)</tr>", m.group(0)):
             cells = re.findall(r"<t[hd][^>]*>([\s\S]*?)</t[hd]>", row)
-            parsed_rows.append([_strip_tags(c).strip() for c in cells])
-        parsed_tables.append(parsed_rows)
-    return remaining, parsed_tables
+            rows.append([_strip_tags(c).strip() for c in cells])
+        blocks.append(("table", rows))
+        return f"\x00BLOCK{len(blocks) - 1}\x00"
+
+    def repl_svg(m):
+        blocks.append(("svg", m.group(0)))
+        return f"\x00BLOCK{len(blocks) - 1}\x00"
+
+    remaining = re.sub(r"<table[\s\S]*?</table>", repl_table, html)
+    remaining = re.sub(r"<svg[\s\S]*?</svg>", repl_svg, remaining)
+    return remaining, blocks
+
+
+def _add_picture_safe(doc, image_bytes_or_path, width_inches=4.5):
+    try:
+        doc.add_picture(image_bytes_or_path, width=Inches(width_inches))
+    except Exception:
+        doc.add_paragraph("[Görsel eklenemedi - web uygulamasına bakın]")
 
 
 def _add_rich_content(doc, html_text):
-    """Markdown/HTML karisik metni dokumana ekler; <table> varsa gercek Word
-    tablosuna cevirir, geri kalan HTML etiketlerini temizler."""
+    """Markdown/HTML karisik metni dokumana ekler: <table> gercek Word
+    tablosuna, <svg> gercek bir resme (PNG) cevrilir, geri kalan HTML
+    etiketleri temizlenir. LaTeX ($...$, $$...$$) Word'de render edilemedigi
+    icin oldugu gibi (duz metin olarak) kalir."""
     if not html_text:
         return
-    remaining, tables = _extract_tables(html_text)
-    for part in re.split(r"(\x00TABLE\d+\x00)", remaining):
-        m = re.match(r"\x00TABLE(\d+)\x00", part)
+    remaining, blocks = _extract_blocks(html_text)
+    for part in re.split(r"(\x00BLOCK\d+\x00)", remaining):
+        m = re.match(r"\x00BLOCK(\d+)\x00", part)
         if m:
-            rows = tables[int(m.group(1))]
-            if not rows:
-                continue
-            table = doc.add_table(rows=len(rows), cols=max(len(r) for r in rows))
-            table.style = "Table Grid"
-            for i, row in enumerate(rows):
-                for j, cell in enumerate(row):
-                    table.cell(i, j).text = cell
+            kind, payload = blocks[int(m.group(1))]
+            if kind == "table":
+                rows = payload
+                if not rows:
+                    continue
+                table = doc.add_table(rows=len(rows), cols=max(len(r) for r in rows))
+                table.style = "Table Grid"
+                for i, row in enumerate(rows):
+                    for j, cell in enumerate(row):
+                        table.cell(i, j).text = cell
+            elif kind == "svg":
+                png = _svg_to_png_bytes(payload)
+                if png:
+                    _add_picture_safe(doc, io.BytesIO(png))
+                else:
+                    doc.add_paragraph("[Şekil eklenemedi - web uygulamasında görebilirsiniz]")
         else:
             text = _strip_tags(part).strip()
             if text:
@@ -88,8 +139,9 @@ def build_exam_report(exam, weak_topics_with_content, output_path):
                     val = wq.get("secenekler", {}).get(key, "")
                     marker = " (dogru)" if wq.get("isaretli_dogru_cevap") == key else ""
                     doc.add_paragraph(f"    {key}) {val}{marker}")
-                if wq.get("image_url"):
-                    doc.add_paragraph("(Orijinal soru gorseli/tablosu icin web uygulamasina bakin)")
+                image_path = wq.get("image_path")
+                if image_path and Path(image_path).exists():
+                    _add_picture_safe(doc, image_path)
 
         content = item["content"]
         doc.add_heading("Konu Anlatimi", level=3)

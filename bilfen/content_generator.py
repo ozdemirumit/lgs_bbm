@@ -64,6 +64,12 @@ acik renk zeminde koyu cizgiler/metinle, olcekli ve okunakli olsun.
 olarak bu HTML/SVG'yi ekle (gerekmiyorsa null birak). Anlatimdaki gorseller \
 dogrudan "anlatim" metninin icine markdown ile karisik HTML olarak gomulebilir.
 
+MATEMATIKSEL IFADELER: Tum formulleri/denklemleri LaTeX ile yaz - satir ici \
+icin tek dolar isareti ($a^2 + b^2 = c^2$), ayri bir satirda gosterilecek \
+formuller icin cift dolar isareti ($$...$$) kullan. Bu, sayfada otomatik \
+olarak duzgun matematik gosterimine cevrilir; kesir, us, kok, alt simge gibi \
+her sey icin LaTeX kullan, duz metinle ("1/2" gibi) yazma.
+
 SADECE asagidaki JSON formatinda yanit ver, baska hicbir aciklama veya metin ekleme \
 (web search sonuclarini veya dusunce surecini JSON disinda yazma):
 {{

@@ -141,8 +141,8 @@ def reanalyze_exam(exam_id):
     return redirect(url_for("exam_detail", exam_id=exam_id))
 
 
-@app.route("/topic/<exam_id>/<int:subject_index>/<kID>")
-def topic_detail(exam_id, subject_index, kID):
+def _load_topic_context(exam_id, subject_index, kID, force=False):
+    """topic_detail ve export_topic arasinda paylasilan yukleme/uretim mantigi."""
     data = load_data()
     exam = next(e for e in data["exams"] if e["id"] == exam_id)
     subj = next(s for s in exam["subjects"] if s["index"] == subject_index)
@@ -154,26 +154,36 @@ def topic_detail(exam_id, subject_index, kID):
         if v is not None
     ]
     peer_avg = sum(peer_scores) / len(peer_scores) if peer_scores else 0
-    wrong_questions = []
+    wrong_questions = get_wrong_question_texts(exam_id, subj)
+    content = content_generator.generate_topic_content(
+        subject_name=subj["name"],
+        topic_name=topic["name"],
+        grade=grade,
+        student_score=topic["student"],
+        peer_avg=peer_avg,
+        exam_id=exam_id,
+        subject_index=subject_index,
+        kID=kID,
+        wrong_questions=wrong_questions,
+        force=force,
+    )
+    return exam, subj, topic, peer_avg, wrong_questions, content
 
+
+@app.route("/topic/<exam_id>/<int:subject_index>/<kID>")
+def topic_detail(exam_id, subject_index, kID):
     force = request.args.get("force") == "1"
-
+    wrong_questions = []
     try:
-        wrong_questions = get_wrong_question_texts(exam_id, subj)
-        content = content_generator.generate_topic_content(
-            subject_name=subj["name"],
-            topic_name=topic["name"],
-            grade=grade,
-            student_score=topic["student"],
-            peer_avg=peer_avg,
-            exam_id=exam_id,
-            subject_index=subject_index,
-            kID=kID,
-            wrong_questions=wrong_questions,
-            force=force,
+        exam, subj, topic, peer_avg, wrong_questions, content = _load_topic_context(
+            exam_id, subject_index, kID, force=force
         )
         error = None
     except RuntimeError as e:
+        data = load_data()
+        exam = next(e for e in data["exams"] if e["id"] == exam_id)
+        subj = next(s for s in exam["subjects"] if s["index"] == subject_index)
+        topic = next(t for t in subj["detail"]["topics"] if t["kID"] == kID)
         content = None
         error = str(e)
 
@@ -186,6 +196,30 @@ def topic_detail(exam_id, subject_index, kID):
         error=error,
         wrong_questions=[wq for wq in wrong_questions if wq.get("okunabildi", True)],
     )
+
+
+@app.route("/topic/<exam_id>/<int:subject_index>/<kID>/export")
+def export_topic(exam_id, subject_index, kID):
+    try:
+        exam, subj, topic, peer_avg, wrong_questions, content = _load_topic_context(
+            exam_id, subject_index, kID
+        )
+    except RuntimeError as e:
+        flash(str(e), "error")
+        return redirect(url_for("topic_detail", exam_id=exam_id, subject_index=subject_index, kID=kID))
+
+    item = {
+        "subject_name": subj["name"],
+        "topic": topic["name"],
+        "student": topic["student"],
+        "peer_avg": peer_avg,
+        "content": content,
+        "wrong_questions": [wq for wq in wrong_questions if wq.get("okunabildi", True)],
+    }
+    safe_name = re.sub(r"[^\w]+", "_", topic["name"]).strip("_")[:40] or "konu"
+    out_path = DATA_DIR / "reports" / f"{exam_id}_{subject_index}_{safe_name}.docx"
+    docx_export.build_exam_report(exam, [item], out_path)
+    return send_file(out_path, as_attachment=True)
 
 
 @app.route("/exam/<exam_id>/export")

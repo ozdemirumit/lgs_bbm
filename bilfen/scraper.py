@@ -107,6 +107,20 @@ def get_subject_detail(page, exam_id, subject_index):
         questions.append({"no": i + 1, "correct": is_correct, "video": video})
 
     try:
+        # AmCharts grafigi sayfa yuklendikten biraz sonra JS ile olusturuluyor;
+        # hemen evaluate edilirse bos gelebilir (ozellikle konu sayisi fazla
+        # oldugunda). Veri gelene kadar bekle.
+        page.wait_for_function(
+            "() => window.AmCharts && window.AmCharts.charts && "
+            "window.AmCharts.charts.length > 0 && "
+            "window.AmCharts.charts[0].dataProvider && "
+            "window.AmCharts.charts[0].dataProvider.length > 0",
+            timeout=8000,
+        )
+    except Exception:
+        pass
+
+    try:
         charts = page.evaluate(
             "() => (window.AmCharts && window.AmCharts.charts || []).map(c => c.dataProvider)"
         )

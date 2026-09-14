@@ -5,7 +5,12 @@
     <h1 class="h4">{{ topic.name }}</h1>
     <p class="text-muted">{{ subj.name }} · Senin puanın: %{{ '%.1f'|format(topic.student) }}</p>
   </div>
-  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=subj.index, kID=topic.kID, force=1) }}">Yeniden Üret</a>
+  <div class="d-flex gap-2">
+    {% if content %}
+      <a class="btn btn-sm btn-success" href="{{ url_for('export_topic', exam_id=exam.id, subject_index=subj.index, kID=topic.kID) }}">Word Olarak İndir</a>
+    {% endif %}
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=subj.index, kID=topic.kID, force=1) }}">Yeniden Üret</a>
+  </div>
 </div>
 
 {% if error %}

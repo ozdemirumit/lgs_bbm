@@ -368,6 +368,21 @@ def export_exam(exam_id):
 
 
 if __name__ == "__main__":
+    import socket
+
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        local_ip = "?"
+
+    print(f"Bu bilgisayar: http://localhost:5000")
+    print(f"Ayni ag/Wi-Fi'deki diger cihazlardan (telefon, tablet...): http://{local_ip}:5000")
+    print("UYARI: debug modu acikken ag uzerinden erisilebilir olmak, ayni agdaki")
+    print("herkesin bir hata sayfasi uzerinden bu bilgisayarda kod calistirabilmesi")
+    print("riskini tasir. Sadece guvendiginiz ev aginda kullanin.")
+
     # threaded=True: bir konu icin AI uretimi birkac dakika surebiliyor (25 soru +
     # web search); bu sirada diger sayfalarda gezinebilmek icin.
-    app.run(debug=True, port=5000, threaded=True)
+    # host="0.0.0.0": sadece bu bilgisayardan degil, ayni agdaki diger
+    # cihazlardan da erisilebilsin diye.
+    app.run(host="0.0.0.0", debug=True, port=5000, threaded=True)

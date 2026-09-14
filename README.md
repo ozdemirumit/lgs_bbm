@@ -48,11 +48,12 @@ Tarayıcıda `http://localhost:5000` açılır.
 
 Ana sayfadaki **"Bilfen'e Giriş Yap"** butonuna basın: gerçek bir Chrome
 penceresi açılır, o pencerede **kendi** kullanıcı adı/şifrenizle giriş
-yapın (şifreniz uygulamadan hiç geçmez). Giriş yaptıktan sonra web
-sayfasındaki **"Girişi Tamamladım"** butonuna basın; oturum
-`data/storage_state.json` içine kaydedilir (bu dosya `.gitignore` ile hariç
-tutulur, GitHub'a gitmez). Oturum süresi dolarsa aynı adımı tekrarlayın
-("Yeniden Giriş Yap").
+yapın (şifreniz uygulamadan hiç geçmez). Bu pencere `data/chrome_profile`
+altında **kalıcı** bir tarayıcı profili kullanır (bu klasör `.gitignore` ile
+hariç tutulur, GitHub'a gitmez): ilk seferde Chrome "Şifreyi kaydet?"
+sorabilir, kabul ederseniz sonraki girişlerde alanlar otomatik dolar. Giriş
+yaptıktan sonra web sayfasındaki **"Girişi Tamamladım"** butonuna basın.
+Oturum süresi dolarsa aynı adımı tekrarlayın ("Yeniden Giriş Yap").
 
 Alternatif olarak terminalden `python login.py` ile de aynı giriş akışı
 çalıştırılabilir.
@@ -71,6 +72,7 @@ indirebilirsiniz.
 login.py                  # Terminalden alternatif tek seferlik manuel giriş
 app.py                    # Flask web uygulaması
 bilfen/login_flow.py      # Web arayüzünden tetiklenen giriş akışı
+bilfen/browser.py         # Kalıcı Chrome profili (autofill/oturum sürekliliği)
 bilfen/scraper.py         # Sınav/ders/soru verisini Playwright ile çeker
 bilfen/video_capture.py   # Yanlış sorunun video çözümünden ekran görüntüsü alır
 bilfen/vision_extract.py  # Görüntüden soru metnini Claude vision ile çıkarır

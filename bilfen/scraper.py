@@ -1,7 +1,7 @@
 """Bilgi Merkezi (bilfen) sinav sonuclarini kazir.
 
-Onceden data/storage_state.json icinde kaydedilmis bir oturum gerektirir
-(bkz. login.py). Sifre bu modulde asla islenmez.
+Onceden kalici Chrome profiliyle (bkz. login_flow.py / login.py) yapilmis bir
+giris gerektirir. Sifre bu modulde asla islenmez.
 """
 import json
 import re
@@ -10,10 +10,10 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 from . import video_capture
+from .browser import has_profile, launch_persistent
 
 BASE_URL = "https://bilgimerkezi.bilfen.com"
 DATA_DIR = Path(__file__).parent.parent / "data"
-STATE_PATH = DATA_DIR / "storage_state.json"
 EXAMS_PATH = DATA_DIR / "exams.json"
 
 
@@ -130,15 +130,15 @@ def get_subject_detail(page, exam_id, subject_index):
 
 
 def sync_all(headless=True, capture_images=True):
-    if not STATE_PATH.exists():
+    if not has_profile():
         raise RuntimeError(
-            "Kayitli oturum bulunamadi. Once 'python login.py' calistirip giris yapin."
+            "Kayitli oturum bulunamadi. Once web arayuzunden 'Bilfen'e Giris Yap' "
+            "adimini tamamlayin (veya 'python login.py' calistirin)."
         )
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
-        context = browser.new_context(storage_state=str(STATE_PATH))
-        page = context.new_page()
+        context = launch_persistent(p, headless=headless)
+        page = context.pages[0] if context.pages else context.new_page()
         try:
             profile = get_profile(page)
             exams = list_exams(page)
@@ -169,7 +169,7 @@ def sync_all(headless=True, capture_images=True):
             )
             return data
         finally:
-            browser.close()
+            context.close()
 
 
 if __name__ == "__main__":

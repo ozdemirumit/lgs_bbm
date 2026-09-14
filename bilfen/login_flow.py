@@ -1,17 +1,17 @@
 """Web arayuzunden tetiklenen, kullanicinin kendi tarayicida giris yaptigi oturum akisi.
 
-Sifre bu modulde asla islenmez: gercek bir Chrome penceresi acilir, kullanici
-kendi kullanici adi/sifresini o pencereye yazar. Kullanici arayuzde "Girisi
-Tamamladim" dedigi anda mevcut oturum cerezleri storage_state.json'a kaydedilir.
+Sifre bu modulde asla islenmez: kalici bir Chrome profili (bkz. browser.py)
+ile gercek bir pencere acilir, kullanici kendi kullanici adi/sifresini o
+pencereye yazar. Profil kalici oldugu icin Chrome sifreyi kaydetmeyi teklif
+edebilir; kabul edilirse sonraki girislerde otomatik dolar.
 """
 import threading
-from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from . import browser
+
 BASE_URL = "https://bilgimerkezi.bilfen.com"
-DATA_DIR = Path(__file__).parent.parent / "data"
-STATE_PATH = DATA_DIR / "storage_state.json"
 
 _lock = threading.Lock()
 _state = {
@@ -22,7 +22,7 @@ _state = {
 
 
 def has_saved_session():
-    return STATE_PATH.exists()
+    return browser.has_profile()
 
 
 def is_in_progress():
@@ -41,18 +41,13 @@ def start():
 
         def worker():
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=False)
-                context = browser.new_context()
-                page = context.new_page()
+                context = browser.launch_persistent(p, headless=False)
+                page = context.pages[0] if context.pages else context.new_page()
                 page.goto(f"{BASE_URL}/welcome")
                 _state["browser_open"] = True
                 finish_event.wait(timeout=15 * 60)
-                DATA_DIR.mkdir(exist_ok=True)
-                try:
-                    context.storage_state(path=str(STATE_PATH))
-                finally:
-                    _state["browser_open"] = False
-                    browser.close()
+                _state["browser_open"] = False
+                context.close()
 
         thread = threading.Thread(target=worker, daemon=True)
         _state["thread"] = thread
@@ -60,8 +55,8 @@ def start():
 
 
 def finish():
-    """Kullanici tarayicida girisi tamamladiktan sonra oturumu kaydeder.
-    Dosyanin gercekten yazilmasini beklemek icin kisa sure thread'in bitmesine bakar."""
+    """Kullanici tarayicida girisi tamamladiktan sonra pencereyi kapatir.
+    Kalici profil sayesinde oturum cerezleri zaten diskte kalir."""
     event = _state["finish_event"]
     if event:
         event.set()

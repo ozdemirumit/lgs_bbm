@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from .content_generator import MODEL, _client
+from .content_generator import MODEL, _client, _log
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 CACHE_DIR = DATA_DIR / "generated" / "questions"
@@ -43,6 +43,7 @@ def extract_question_text(image_path, cache_key, force=False):
         return json.loads(cache_path.read_text(encoding="utf-8"))
 
     image_path = Path(image_path)
+    _log(f"Yanlis sorunun goruntusu inceleniyor: {image_path.name}")
     image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
 
     client = _client()

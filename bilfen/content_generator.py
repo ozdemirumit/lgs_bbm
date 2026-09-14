@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import time
 from datetime import date
 from pathlib import Path
 
@@ -12,6 +13,18 @@ GEN_DIR = DATA_DIR / "generated"
 
 MODEL = "claude-sonnet-5"
 MAX_SIMILAR_QUESTIONS = 25
+
+_BLOCK_LABELS = {
+    "thinking": "düşünüyor",
+    "server_tool_use": "web'de arama yapıyor",
+    "web_search_tool_result": "arama sonuçlarını değerlendiriyor",
+    "text": "yanıtı yazıyor",
+}
+
+
+def _log(msg):
+    """Uzun suren AI uretimi sirasinda terminalde (konsol log) ilerlemeyi gosterir."""
+    print(f"[icerik-uretimi] {msg}", flush=True)
 
 PROMPT_TEMPLATE = """Sen deneyimli bir {grade}. sinif {subject_name} ogretmenisin. \
 Bir ogrenci son sinavda "{topic_name}" konusunda akranlarinin gerisinde kaldi \
@@ -163,7 +176,11 @@ def generate_topic_content(
     client = _client()
     data = None
     last_error = None
+    _log(f"'{subject_name} / {topic_name}' icin uretim basliyor (en fazla {MAX_SIMILAR_QUESTIONS} soru, web search dahil)...")
     for attempt in range(3):  # yarida kesilen/bozuk JSON icin birkac kez tekrar dene
+        if attempt > 0:
+            _log(f"Tekrar deneniyor ({attempt + 1}/3)...")
+        t0 = time.time()
         try:
             # 25 soruya kadar + web search uzun surebildigi icin streaming kullanilir
             # (SDK, >10 dk surebilecek istekler icin streaming zorunlu tutuyor).
@@ -173,6 +190,15 @@ def generate_topic_content(
                 tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
                 messages=[{"role": "user", "content": prompt}],
             ) as stream:
+                last_block = None
+                for event in stream:
+                    if event.type != "content_block_start":
+                        continue
+                    block_type = event.content_block.type
+                    if block_type == last_block:
+                        continue
+                    last_block = block_type
+                    _log(f"  -> {_BLOCK_LABELS.get(block_type, block_type)}")
                 resp = stream.get_final_message()
         except anthropic.AuthenticationError:
             raise RuntimeError(
@@ -182,10 +208,12 @@ def generate_topic_content(
         except anthropic.APIError as e:
             raise RuntimeError(f"Claude API hatasi: {e}")
 
+        elapsed = time.time() - t0
         truncated = resp.stop_reason == "max_tokens"
         text = "".join(block.text for block in resp.content if block.type == "text")
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if not match:
+            _log(f"Yanit alindi ({elapsed:.0f} sn) ama JSON bulunamadi.")
             last_error = (
                 "Model yanitindan JSON cikarilamadi"
                 + (" (yanit token limitine takilip yarida kesildi)." if truncated else ".")
@@ -194,8 +222,10 @@ def generate_topic_content(
             continue
         try:
             data = json.loads(match.group(0))
+            _log(f"Basarili ({elapsed:.0f} sn): {len(data.get('sorular', []))} soru uretildi.")
             break
         except json.JSONDecodeError as e:
+            _log(f"Yanit alindi ({elapsed:.0f} sn) ama JSON hatali: {e}")
             last_error = (
                 f"Model yaniti JSON olarak ayristirilamadi ({e})."
                 + (" Yanit token limitine takilip yarida kesilmis olabilir." if truncated else "")
@@ -203,6 +233,7 @@ def generate_topic_content(
             continue
 
     if data is None:
+        _log("Uretim basarisiz oldu (3 deneme de basarisiz).")
         raise RuntimeError(last_error or "Model yanitindan icerik uretilemedi.")
 
     if cache_path:

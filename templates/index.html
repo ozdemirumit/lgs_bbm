@@ -53,15 +53,31 @@
       </table>
     </div>
     <div class="col-md-5">
+      {% if studied %}
+        <h2 class="h5">Daha Önce Çalıştıkların <span class="badge bg-secondary">hazır, anında açılır</span></h2>
+        <ul class="list-group mb-4">
+        {% for s in studied %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{{ s.topic }}</strong><br>
+              <small class="text-muted">{{ s.subject_name }} · {{ s.exam_name }}</small>
+            </div>
+            <a class="btn btn-sm btn-outline-success" href="{{ url_for('topic_detail', exam_id=s.exam_id, subject_index=s.subject_index, kID=s.kID) }}">Aç</a>
+          </li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+
       <h2 class="h5">En Zayıf Konular</h2>
       <ul class="list-group">
       {% for w in weak[:8] %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
           <div>
-            <strong>{{ w.topic }}</strong><br>
+            <strong>{{ w.topic }}</strong>
+            {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
             <small class="text-muted">{{ w.subject_name }} · {{ w.exam_name }}</small>
           </div>
-          <a class="btn btn-sm btn-outline-danger" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">Çalış</a>
+          <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
         </li>
       {% else %}
         <li class="list-group-item text-muted">Tebrikler, zayıf konu tespit edilmedi.</li>

@@ -24,10 +24,11 @@
 {% for w in weak %}
 <li class="list-group-item d-flex justify-content-between align-items-center">
   <div>
-    <strong>{{ w.topic }}</strong> ({{ w.subject_name }})<br>
+    <strong>{{ w.topic }}</strong> ({{ w.subject_name }})
+    {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
     <small class="text-muted">Sen: %{{ '%.1f'|format(w.student) }} · Akran ort.: %{{ '%.1f'|format(w.peer_avg) }}</small>
   </div>
-  <a class="btn btn-sm btn-outline-danger" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=w.subject_index, kID=w.kID) }}">Çalış</a>
+  <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
 </li>
 {% else %}
 <li class="list-group-item text-muted">Bu sınavda zayıf konu tespit edilmedi.</li>

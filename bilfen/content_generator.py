@@ -80,6 +80,30 @@ def _format_wrong_questions_block(wrong_questions):
     return "\n".join(parts) + "\n"
 
 
+def is_cached(exam_id, subject_index, kID):
+    return _cache_path(exam_id, subject_index, kID).exists()
+
+
+def list_cached_topics():
+    """Daha once icerigi uretilip diske onbelleklenmis konularin
+    (exam_id, subject_index, kID) uclusunu dondurur - boylece bunlara
+    yeniden uretim beklemeden, dogrudan erisim linki verilebilir."""
+    if not GEN_DIR.exists():
+        return []
+    results = []
+    for f in GEN_DIR.glob("*.json"):
+        parts = f.stem.split("_", 2)
+        if len(parts) != 3:
+            continue
+        exam_id, subject_index, kID = parts
+        try:
+            subject_index = int(subject_index)
+        except ValueError:
+            continue
+        results.append({"exam_id": exam_id, "subject_index": subject_index, "kID": kID})
+    return results
+
+
 def _client():
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:

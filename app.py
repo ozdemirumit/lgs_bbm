@@ -52,6 +52,34 @@ def load_data():
     return json.loads(EXAMS_PATH.read_text(encoding="utf-8"))
 
 
+def list_studied_topics(data):
+    """Daha once icerigi uretilmis (onbellekte hazir) konulari, tekrar
+    beklemeden dogrudan acilabilecek sekilde listeler."""
+    if not data:
+        return []
+    exams_by_id = {e["id"]: e for e in data.get("exams", [])}
+    studied = []
+    for ref in content_generator.list_cached_topics():
+        exam = exams_by_id.get(ref["exam_id"])
+        if not exam:
+            continue
+        subj = next((s for s in exam.get("subjects", []) if s["index"] == ref["subject_index"]), None)
+        if not subj:
+            continue
+        topic = next((t for t in subj.get("detail", {}).get("topics", []) if t["kID"] == ref["kID"]), None)
+        if not topic:
+            continue
+        studied.append({
+            "exam_id": exam["id"],
+            "exam_name": exam["name"],
+            "subject_index": subj["index"],
+            "subject_name": subj["name"],
+            "kID": topic["kID"],
+            "topic": topic["name"],
+        })
+    return studied
+
+
 @app.route("/media/question_images/<path:filename>")
 def question_image(filename):
     return send_from_directory(IMAGES_DIR, filename)
@@ -79,14 +107,22 @@ def get_wrong_question_texts(exam_id, subj):
     return results
 
 
+def _mark_cached(topics):
+    for t in topics:
+        t["cached"] = content_generator.is_cached(t["exam_id"], t["subject_index"], t["kID"])
+    return topics
+
+
 @app.route("/")
 def index():
     data = load_data()
-    weak = analyzer.weak_topics(data) if data else []
+    weak = _mark_cached(analyzer.weak_topics(data)) if data else []
+    studied = list_studied_topics(data)
     return render_template(
         "index.html",
         data=data,
         weak=weak,
+        studied=studied,
         has_session=login_flow.has_saved_session(),
         login_in_progress=login_flow.is_in_progress(),
     )
@@ -122,7 +158,7 @@ def sync():
 def exam_detail(exam_id):
     data = load_data()
     exam = next((e for e in data["exams"] if e["id"] == exam_id), None)
-    weak = [w for w in analyzer.weak_topics(data) if w["exam_id"] == exam_id]
+    weak = _mark_cached([w for w in analyzer.weak_topics(data) if w["exam_id"] == exam_id])
     return render_template("exam.html", exam=exam, weak=weak)
 
 

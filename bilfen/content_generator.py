@@ -67,6 +67,16 @@ def _cache_path(exam_id, subject_index, kID):
     return GEN_DIR / f"{exam_id}_{subject_index}_{safe_kid}.json"
 
 
+def clear_cache_for_exam(exam_id):
+    """'Yeniden analiz et' icin: bu sinava ait daha once uretilmis konu
+    anlatimi/benzer soru onbellegini siler, bir sonraki goruntulemede
+    yeniden uretilir."""
+    if not GEN_DIR.exists():
+        return
+    for f in GEN_DIR.glob(f"{exam_id}_*.json"):
+        f.unlink(missing_ok=True)
+
+
 def generate_topic_content(
     subject_name,
     topic_name,

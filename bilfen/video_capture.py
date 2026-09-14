@@ -59,10 +59,10 @@ def capture_wrong_question_image(page, exam_id, subject_index, question_no, forc
     return out_path if out_path.exists() else None
 
 
-def capture_all_wrong_images(page, exam_id, subject_index, wrong_question_numbers):
+def capture_all_wrong_images(page, exam_id, subject_index, wrong_question_numbers, force=False):
     """Bir dersteki tum yanlis sorular icin ekran goruntusu yakalar.
     {question_no: Path|None} sozlugu doner."""
     results = {}
     for qno in wrong_question_numbers:
-        results[qno] = capture_wrong_question_image(page, exam_id, subject_index, qno)
+        results[qno] = capture_wrong_question_image(page, exam_id, subject_index, qno, force=force)
     return results

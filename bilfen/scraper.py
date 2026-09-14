@@ -129,20 +129,43 @@ def get_subject_detail(page, exam_id, subject_index):
     return {"questions": questions, "topics": topics}
 
 
-def sync_all(headless=True, capture_images=True):
+def load_cached():
+    if not EXAMS_PATH.exists():
+        return {}
+    try:
+        old = json.loads(EXAMS_PATH.read_text(encoding="utf-8"))
+        return {e["id"]: e for e in old.get("exams", [])}
+    except Exception:
+        return {}
+
+
+def sync_all(headless=True, capture_images=True, force_exam_ids=None):
+    """Bilfen'den sinav listesini ceker. Daha once detayi cekilmis bir sinav,
+    force_exam_ids icinde belirtilmedigi surece TEKRAR taranmaz (onbellekten
+    kullanilir) - boylece her senkronizasyonda ayni sinavlarla ugrasilmaz,
+    sadece yeni sinavlar veya acikca istenen sinavlar yeniden islenir."""
     if not has_profile():
         raise RuntimeError(
             "Kayitli oturum bulunamadi. Once web arayuzunden 'Bilfen'e Giris Yap' "
             "adimini tamamlayin (veya 'python login.py' calistirin)."
         )
 
+    force_exam_ids = set(force_exam_ids or [])
+    cached = load_cached()
+
     with sync_playwright() as p:
         context = launch_persistent(p, headless=headless)
         page = context.pages[0] if context.pages else context.new_page()
         try:
             profile = get_profile(page)
-            exams = list_exams(page)
-            for exam in exams:
+            exam_list = list_exams(page)
+            exams = []
+            for exam in exam_list:
+                prev = cached.get(exam["id"])
+                if prev and "subjects" in prev and exam["id"] not in force_exam_ids:
+                    exams.append(prev)
+                    continue
+
                 subjects = get_exam_subjects(page, exam["id"])
                 for subj in subjects:
                     if not subj["wrong"]:
@@ -153,7 +176,8 @@ def sync_all(headless=True, capture_images=True):
                     if capture_images:
                         wrong_nos = [q["no"] for q in detail["questions"] if not q["correct"]]
                         images = video_capture.capture_all_wrong_images(
-                            page, exam["id"], subj["index"], wrong_nos
+                            page, exam["id"], subj["index"], wrong_nos,
+                            force=exam["id"] in force_exam_ids,
                         )
                         for q in detail["questions"]:
                             path = images.get(q["no"])
@@ -161,6 +185,14 @@ def sync_all(headless=True, capture_images=True):
 
                     subj["detail"] = detail
                 exam["subjects"] = subjects
+                exams.append(exam)
+
+            # Bilfen'in sinav listesinde artik gorunmeyen (ör. sayfalama nedeniyle
+            # dusen) eski sinavlari da yerel gecmiste tutmaya devam et.
+            seen_ids = {e["id"] for e in exams}
+            for exam_id, prev in cached.items():
+                if exam_id not in seen_ids:
+                    exams.append(prev)
 
             data = {"profile": profile, "exams": exams}
             DATA_DIR.mkdir(exist_ok=True)

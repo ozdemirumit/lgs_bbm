@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, send_file, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, url_for
 
 load_dotenv()
 
@@ -88,6 +88,21 @@ def exam_detail(exam_id):
     return render_template("exam.html", exam=exam, weak=weak)
 
 
+@app.route("/exam/<exam_id>/reanalyze", methods=["POST"])
+def reanalyze_exam(exam_id):
+    """Bu sinavi -ve onun AI icerigini- onbellekten degil, bastan analiz eder."""
+    try:
+        content_generator.clear_cache_for_exam(exam_id)
+        vision_extract.clear_cache_for_exam(exam_id)
+        scraper.sync_all(headless=True, force_exam_ids=[exam_id])
+        flash("Sınav yeniden analiz edildi.", "success")
+    except RuntimeError as e:
+        flash(str(e), "error")
+    except Exception as e:  # pragma: no cover - runtime feedback
+        flash(f"Yeniden analiz hatası: {e}", "error")
+    return redirect(url_for("exam_detail", exam_id=exam_id))
+
+
 @app.route("/topic/<exam_id>/<int:subject_index>/<kID>")
 def topic_detail(exam_id, subject_index, kID):
     data = load_data()
@@ -103,6 +118,8 @@ def topic_detail(exam_id, subject_index, kID):
     peer_avg = sum(peer_scores) / len(peer_scores) if peer_scores else 0
     wrong_questions = []
 
+    force = request.args.get("force") == "1"
+
     try:
         wrong_questions = get_wrong_question_texts(exam_id, subj)
         content = content_generator.generate_topic_content(
@@ -115,6 +132,7 @@ def topic_detail(exam_id, subject_index, kID):
             subject_index=subject_index,
             kID=kID,
             wrong_questions=wrong_questions,
+            force=force,
         )
         error = None
     except RuntimeError as e:

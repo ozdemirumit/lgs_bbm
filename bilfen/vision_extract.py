@@ -27,6 +27,15 @@ SADECE asagidaki JSON formatinda yanit ver, baska aciklama ekleme:
 Gorselde net bir soru secilemiyorsa "okunabildi": false yap, digerlerini bos birak."""
 
 
+def clear_cache_for_exam(exam_id):
+    """'Yeniden analiz et' icin: bu sinava ait daha once cikarilmis soru
+    metni onbellegini siler."""
+    if not CACHE_DIR.exists():
+        return
+    for f in CACHE_DIR.glob(f"{exam_id}_*.json"):
+        f.unlink(missing_ok=True)
+
+
 def extract_question_text(image_path, cache_key, force=False):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = CACHE_DIR / f"{cache_key}.json"

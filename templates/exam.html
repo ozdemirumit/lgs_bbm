@@ -3,7 +3,12 @@
 <h1 class="h4">{{ exam.name }}</h1>
 <p class="text-muted">{{ exam.date }}</p>
 
-<a class="btn btn-success mb-3" href="{{ url_for('export_exam', exam_id=exam.id) }}">Word Raporu İndir</a>
+<div class="d-flex gap-2 mb-3">
+  <a class="btn btn-success" href="{{ url_for('export_exam', exam_id=exam.id) }}">Word Raporu İndir</a>
+  <form method="post" action="{{ url_for('reanalyze_exam', exam_id=exam.id) }}">
+    <button class="btn btn-outline-secondary" onclick="return confirm('Bu sınav Bilfen\'den ve AI ile yeniden analiz edilecek, biraz sürebilir. Devam edilsin mi?');">Yeniden Analiz Et</button>
+  </form>
+</div>
 
 <table class="table bg-white">
 <thead><tr><th>Ders</th><th>Doğru</th><th>Yanlış</th><th>Boş</th></tr></thead>

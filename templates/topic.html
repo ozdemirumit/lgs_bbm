@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="h4">{{ topic.name }}</h1>
-<p class="text-muted">{{ subj.name }} · Senin puanın: %{{ '%.1f'|format(topic.student) }}</p>
+<div class="d-flex justify-content-between align-items-start">
+  <div>
+    <h1 class="h4">{{ topic.name }}</h1>
+    <p class="text-muted">{{ subj.name }} · Senin puanın: %{{ '%.1f'|format(topic.student) }}</p>
+  </div>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('topic_detail', exam_id=exam.id, subject_index=subj.index, kID=topic.kID, force=1) }}">Yeniden Üret</a>
+</div>
 
 {% if error %}
 <div class="alert alert-warning">{{ error }}</div>

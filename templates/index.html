@@ -76,13 +76,14 @@
         <h3 class="h6">Zayıf Konular</h3>
         <ul class="list-group">
         {% for w in selected_weak %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
+          <li class="list-group-item d-flex justify-content-between align-items-center weak-topic-item {{ 'is-ready' if w.cached else '' }}"
+              data-exam-id="{{ w.exam_id }}" data-subject-index="{{ w.subject_index }}" data-kid="{{ w.kID }}">
             <div>
               <strong>{{ w.topic }}</strong> ({{ w.subject_name }})
-              {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
+              <span class="cached-badge-slot">{% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}</span><br>
               <small class="text-muted">Sen: %{{ '%.1f'|format(w.student) }}{% if w.peer_avg is not none %} · Akran ort.: %{{ '%.1f'|format(w.peer_avg) }}{% endif %}</small>
             </div>
-            <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
+            <a class="btn btn-sm topic-action-btn {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
           </li>
         {% else %}
           <li class="list-group-item text-muted">Bu sınavda yanlış yapılan konu tespit edilmedi.</li>
@@ -107,13 +108,14 @@
         <h2 class="h5">Tüm Sınavlarda En Zayıf Konular</h2>
         <ul class="list-group">
         {% for w in weak[:8] %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
+          <li class="list-group-item d-flex justify-content-between align-items-center weak-topic-item {{ 'is-ready' if w.cached else '' }}"
+              data-exam-id="{{ w.exam_id }}" data-subject-index="{{ w.subject_index }}" data-kid="{{ w.kID }}">
             <div>
               <strong>{{ w.topic }}</strong>
-              {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
+              <span class="cached-badge-slot">{% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}</span><br>
               <small class="text-muted">{{ w.subject_name }} · {{ w.exam_name }}</small>
             </div>
-            <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
+            <a class="btn btn-sm topic-action-btn {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
           </li>
         {% else %}
           <li class="list-group-item text-muted">Tebrikler, zayıf konu tespit edilmedi.</li>

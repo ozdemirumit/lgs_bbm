@@ -6,7 +6,7 @@ from pathlib import Path
 
 import markdown as markdown_lib
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, send_from_directory, url_for
 
 load_dotenv()
 
@@ -112,6 +112,24 @@ def _mark_cached(topics):
     for t in topics:
         t["cached"] = content_generator.is_cached(t["exam_id"], t["subject_index"], t["kID"])
     return topics
+
+
+@app.route("/api/cached_status", methods=["POST"])
+def cached_status():
+    """Sayfa acikken arka planda tamamlanan uretimleri, sayfa yenilenmeden
+    'Aç'a cevirebilmek icin kullanilan hafif durum sorgusu (bkz.
+    static/live_status.js)."""
+    payload = request.get_json(silent=True) or {}
+    result = {}
+    for item in payload.get("items", []):
+        try:
+            key = f"{item['exam_id']}_{item['subject_index']}_{item['kID']}"
+            result[key] = content_generator.is_cached(
+                item["exam_id"], item["subject_index"], item["kID"]
+            )
+        except (KeyError, TypeError):
+            continue
+    return jsonify(result)
 
 
 def generate_weak_topics_parallel(exam, weak, grade, max_workers=4):

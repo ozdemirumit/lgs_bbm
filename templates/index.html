@@ -2,16 +2,40 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h3 mb-0">Sınavlarım</h1>
-  <form method="post" action="{{ url_for('sync') }}">
-    <button class="btn btn-primary">Bilfen'den Senkronize Et</button>
-  </form>
+  <div class="d-flex gap-2">
+    {% if login_in_progress %}
+      <form method="post" action="{{ url_for('login_finish') }}">
+        <button class="btn btn-success">Girişi Tamamladım</button>
+      </form>
+    {% else %}
+      <form method="post" action="{{ url_for('login_start') }}">
+        <button class="btn btn-outline-primary">{{ 'Yeniden Giriş Yap' if has_session else 'Bilfen\'e Giriş Yap' }}</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('sync') }}">
+      <button class="btn btn-primary" {{ 'disabled' if not has_session and not login_in_progress else '' }}>Bilfen'den Senkronize Et</button>
+    </form>
+  </div>
 </div>
 
-{% if not data %}
-  <div class="alert alert-warning">
-    Henüz veri yok. Önce <code>python login.py</code> ile giriş yapın, sonra yukarıdaki
-    "Senkronize Et" butonuna basın.
+{% if login_in_progress %}
+  <div class="alert alert-info">
+    Açılan tarayıcı penceresinde kendi kullanıcı adı/şifrenizle giriş yapın. Bitirince
+    yukarıdaki <strong>"Girişi Tamamladım"</strong> butonuna basın.
   </div>
+{% elif not has_session %}
+  <div class="alert alert-warning">
+    Henüz Bilfen'e giriş yapılmamış. Yukarıdaki <strong>"Bilfen'e Giriş Yap"</strong>
+    butonuna basın, açılan pencerede giriş yapın ve "Girişi Tamamladım" deyin.
+  </div>
+{% endif %}
+
+{% if not data %}
+  {% if has_session %}
+    <div class="alert alert-warning">
+      Henüz sınav verisi çekilmedi. "Senkronize Et" butonuna basın.
+    </div>
+  {% endif %}
 {% else %}
   <div class="row">
     <div class="col-md-7">

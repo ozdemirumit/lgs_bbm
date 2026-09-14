@@ -7,7 +7,7 @@ from flask import Flask, flash, redirect, render_template, send_file, url_for
 
 load_dotenv()
 
-from bilfen import analyzer, content_generator, docx_export, scraper, vision_extract  # noqa: E402
+from bilfen import analyzer, content_generator, docx_export, login_flow, scraper, vision_extract  # noqa: E402
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
@@ -45,7 +45,27 @@ def get_wrong_question_texts(exam_id, subj):
 def index():
     data = load_data()
     weak = analyzer.weak_topics(data) if data else []
-    return render_template("index.html", data=data, weak=weak)
+    return render_template(
+        "index.html",
+        data=data,
+        weak=weak,
+        has_session=login_flow.has_saved_session(),
+        login_in_progress=login_flow.is_in_progress(),
+    )
+
+
+@app.route("/login/start", methods=["POST"])
+def login_start():
+    login_flow.start()
+    flash("Açılan tarayıcı penceresinde kendi kullanıcı adı/şifrenizle giriş yapın, sonra aşağıdaki 'Girişi Tamamladım' butonuna basın.", "success")
+    return redirect(url_for("index"))
+
+
+@app.route("/login/finish", methods=["POST"])
+def login_finish():
+    login_flow.finish()
+    flash("Oturum kaydedildi. Şimdi 'Senkronize Et' butonuna basabilirsiniz.", "success")
+    return redirect(url_for("index"))
 
 
 @app.route("/sync", methods=["POST"])

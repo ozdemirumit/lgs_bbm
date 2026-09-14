@@ -36,34 +36,41 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ## Kullanım
 
-### 1. Bilfen'e giriş yapın (bir kerelik)
-
-```bash
-python login.py
-```
-
-Açılan tarayıcı penceresinde **kendi** kullanıcı adı/şifrenizle giriş yapın,
-sonra terminale dönüp Enter'a basın. Oturum `data/storage_state.json`
-içine kaydedilir (bu dosya `.gitignore` ile hariç tutulur, GitHub'a gitmez).
-Oturum süresi dolarsa bu adımı tekrarlayın.
-
-### 2. Uygulamayı başlatın
+### 1. Uygulamayı başlatın
 
 ```bash
 python app.py
 ```
 
-Tarayıcıda `http://localhost:5000` açılır. "Bilfen'den Senkronize Et"
-butonuyla sınav verileri çekilir (yanlış soruların video ekran görüntüleri de
-bu adımda arka planda kaydedilir, biraz sürebilir). Ardından zayıf konulara
-tıklayarak konu anlatımı ve benzer soruları görebilir, sınav detay sayfasından
-Word raporu indirebilirsiniz.
+Tarayıcıda `http://localhost:5000` açılır.
+
+### 2. Bilfen'e giriş yapın (bir kerelik, web arayüzünden)
+
+Ana sayfadaki **"Bilfen'e Giriş Yap"** butonuna basın: gerçek bir Chrome
+penceresi açılır, o pencerede **kendi** kullanıcı adı/şifrenizle giriş
+yapın (şifreniz uygulamadan hiç geçmez). Giriş yaptıktan sonra web
+sayfasındaki **"Girişi Tamamladım"** butonuna basın; oturum
+`data/storage_state.json` içine kaydedilir (bu dosya `.gitignore` ile hariç
+tutulur, GitHub'a gitmez). Oturum süresi dolarsa aynı adımı tekrarlayın
+("Yeniden Giriş Yap").
+
+Alternatif olarak terminalden `python login.py` ile de aynı giriş akışı
+çalıştırılabilir.
+
+### 3. Senkronize edin
+
+Girişten sonra **"Bilfen'den Senkronize Et"** butonuna basın: sınav verileri
+çekilir (yanlış soruların video ekran görüntüleri de bu adımda arka planda
+kaydedilir, biraz sürebilir). Ardından zayıf konulara tıklayarak konu
+anlatımı ve benzer soruları görebilir, sınav detay sayfasından Word raporu
+indirebilirsiniz.
 
 ## Proje yapısı
 
 ```
-login.py                 # Tek seferlik manuel giriş, oturumu kaydeder
+login.py                  # Terminalden alternatif tek seferlik manuel giriş
 app.py                    # Flask web uygulaması
+bilfen/login_flow.py      # Web arayüzünden tetiklenen giriş akışı
 bilfen/scraper.py         # Sınav/ders/soru verisini Playwright ile çeker
 bilfen/video_capture.py   # Yanlış sorunun video çözümünden ekran görüntüsü alır
 bilfen/vision_extract.py  # Görüntüden soru metnini Claude vision ile çıkarır

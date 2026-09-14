@@ -118,11 +118,24 @@ def index():
     data = load_data()
     weak = _mark_cached(analyzer.weak_topics(data)) if data else []
     studied = list_studied_topics(data)
+
+    selected_exam = None
+    selected_weak = []
+    selected_exam_id = request.args.get("exam")
+    if data and selected_exam_id:
+        selected_exam = next((e for e in data["exams"] if e["id"] == selected_exam_id), None)
+        if selected_exam:
+            selected_weak = _mark_cached(
+                [w for w in analyzer.weak_topics(data) if w["exam_id"] == selected_exam_id]
+            )
+
     return render_template(
         "index.html",
         data=data,
         weak=weak,
         studied=studied,
+        selected_exam=selected_exam,
+        selected_weak=selected_weak,
         has_session=login_flow.has_saved_session(),
         login_in_progress=login_flow.is_in_progress(),
     )

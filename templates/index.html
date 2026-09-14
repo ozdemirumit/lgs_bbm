@@ -38,51 +38,88 @@
   {% endif %}
 {% else %}
   <div class="row">
-    <div class="col-md-7">
-      <table class="table table-striped bg-white">
-        <thead><tr><th>Sınav</th><th>Tarih</th><th></th></tr></thead>
-        <tbody>
-        {% for exam in data.exams %}
-          <tr>
-            <td>{{ exam.name }}</td>
-            <td>{{ exam.date }}</td>
-            <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('exam_detail', exam_id=exam.id) }}">İncele</a></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
     <div class="col-md-5">
-      {% if studied %}
-        <h2 class="h5">Daha Önce Çalıştıkların <span class="badge bg-secondary">hazır, anında açılır</span></h2>
-        <ul class="list-group mb-4">
-        {% for s in studied %}
+      <h2 class="h5">Sınavlar <small class="text-muted">(seçmek için tıklayın)</small></h2>
+      <div class="list-group mb-4">
+        {% for exam in data.exams %}
+          <a href="{{ url_for('index', exam=exam.id) }}"
+             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {{ 'active' if selected_exam and selected_exam.id == exam.id else '' }}">
+            <span>{{ exam.name }}<br><small class="{{ '' if selected_exam and selected_exam.id == exam.id else 'text-muted' }}">{{ exam.date }}</small></span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-md-7">
+      {% if selected_exam %}
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h2 class="h5 mb-0">{{ selected_exam.name }}</h2>
+            <small class="text-muted">{{ selected_exam.date }}</small>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-success" href="{{ url_for('export_exam', exam_id=selected_exam.id) }}">Word Raporu İndir</a>
+            <form method="post" action="{{ url_for('reanalyze_exam', exam_id=selected_exam.id) }}">
+              <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Bu sınav Bilfen\'den ve AI ile yeniden analiz edilecek, biraz sürebilir. Devam edilsin mi?');">Yeniden Analiz Et</button>
+            </form>
+          </div>
+        </div>
+
+        <table class="table table-sm bg-white mb-3">
+          <thead><tr><th>Ders</th><th>Doğru</th><th>Yanlış</th><th>Boş</th></tr></thead>
+          <tbody>
+          {% for s in selected_exam.subjects %}
+            <tr><td>{{ s.name }}</td><td>{{ s.correct }}</td><td>{{ s.wrong }}</td><td>{{ s.empty }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+
+        <h3 class="h6">Zayıf Konular</h3>
+        <ul class="list-group">
+        {% for w in selected_weak %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>
-              <strong>{{ s.topic }}</strong><br>
-              <small class="text-muted">{{ s.subject_name }} · {{ s.exam_name }}</small>
+              <strong>{{ w.topic }}</strong> ({{ w.subject_name }})
+              {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
+              <small class="text-muted">Sen: %{{ '%.1f'|format(w.student) }}{% if w.peer_avg is not none %} · Akran ort.: %{{ '%.1f'|format(w.peer_avg) }}{% endif %}</small>
             </div>
-            <a class="btn btn-sm btn-outline-success" href="{{ url_for('topic_detail', exam_id=s.exam_id, subject_index=s.subject_index, kID=s.kID) }}">Aç</a>
+            <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
           </li>
+        {% else %}
+          <li class="list-group-item text-muted">Bu sınavda yanlış yapılan konu tespit edilmedi.</li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        {% if studied %}
+          <h2 class="h5">Daha Önce Çalıştıkların <span class="badge bg-secondary">hazır, anında açılır</span></h2>
+          <ul class="list-group mb-4">
+          {% for s in studied %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ s.topic }}</strong><br>
+                <small class="text-muted">{{ s.subject_name }} · {{ s.exam_name }}</small>
+              </div>
+              <a class="btn btn-sm btn-outline-success" href="{{ url_for('topic_detail', exam_id=s.exam_id, subject_index=s.subject_index, kID=s.kID) }}">Aç</a>
+            </li>
+          {% endfor %}
+          </ul>
+        {% endif %}
+
+        <h2 class="h5">Tüm Sınavlarda En Zayıf Konular</h2>
+        <ul class="list-group">
+        {% for w in weak[:8] %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{{ w.topic }}</strong>
+              {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
+              <small class="text-muted">{{ w.subject_name }} · {{ w.exam_name }}</small>
+            </div>
+            <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
+          </li>
+        {% else %}
+          <li class="list-group-item text-muted">Tebrikler, zayıf konu tespit edilmedi.</li>
         {% endfor %}
         </ul>
       {% endif %}
-
-      <h2 class="h5">En Zayıf Konular</h2>
-      <ul class="list-group">
-      {% for w in weak[:8] %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          <div>
-            <strong>{{ w.topic }}</strong>
-            {% if w.cached %}<span class="badge bg-success">hazır</span>{% endif %}<br>
-            <small class="text-muted">{{ w.subject_name }} · {{ w.exam_name }}</small>
-          </div>
-          <a class="btn btn-sm {{ 'btn-outline-success' if w.cached else 'btn-outline-danger' }}" href="{{ url_for('topic_detail', exam_id=w.exam_id, subject_index=w.subject_index, kID=w.kID) }}">{{ 'Aç' if w.cached else 'Çalış' }}</a>
-        </li>
-      {% else %}
-        <li class="list-group-item text-muted">Tebrikler, zayıf konu tespit edilmedi.</li>
-      {% endfor %}
-      </ul>
     </div>
   </div>
 {% endif %}

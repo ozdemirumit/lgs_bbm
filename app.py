@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import markdown as markdown_lib
@@ -113,6 +114,53 @@ def _mark_cached(topics):
     return topics
 
 
+def generate_weak_topics_parallel(exam, weak, grade, max_workers=4):
+    """Birden fazla konu ayni anda uretilecekse (Word raporu, Yeniden Analiz
+    Et) her biri icin ayri ayri, sirayla dakikalarca beklemek yerine
+    ThreadPoolExecutor ile paralel calistirir (AI cagrisi I/O-bound oldugu
+    icin threadler GIL'i birbirine birakip gercekten es zamanli ilerler).
+    (icerik, hatalar) tuple'i doner; basarisiz olan konular hatalar
+    listesinde, digerleri normal calismaya devam eder."""
+    # Ayni dersin yanlis sorulari birden fazla zayif konu tarafindan
+    # paylasilabiliyor; her thread'in ayni goruntuyu ayri ayri (ve ayni anda
+    # dosyaya yazarak) islemesini onlemek icin bir kere, sirayla hesaplanir.
+    wrong_by_subject = {}
+    for w in weak:
+        if w["subject_index"] not in wrong_by_subject:
+            subj = next(s for s in exam["subjects"] if s["index"] == w["subject_index"])
+            wrong_by_subject[w["subject_index"]] = get_wrong_question_texts(exam["id"], subj)
+
+    def work(w):
+        wrong_questions = wrong_by_subject.get(w["subject_index"], [])
+        content = content_generator.generate_topic_content(
+            subject_name=w["subject_name"],
+            topic_name=w["topic"],
+            grade=grade,
+            student_score=w["student"],
+            peer_avg=w["peer_avg"],
+            exam_id=w["exam_id"],
+            subject_index=w["subject_index"],
+            kID=w["kID"],
+            wrong_questions=wrong_questions,
+        )
+        return {**w, "content": content, "wrong_questions": wrong_questions}
+
+    items = []
+    errors = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(work, w): w for w in weak}
+        for future in as_completed(futures):
+            try:
+                items.append(future.result())
+            except RuntimeError as e:
+                errors.append(str(e))
+
+    # Sirali/kararli gorunmesi icin orijinal zayiflik siralamasina geri koy
+    order = {(w["subject_index"], w["kID"]): i for i, w in enumerate(weak)}
+    items.sort(key=lambda it: order.get((it["subject_index"], it["kID"]), 0))
+    return items, errors
+
+
 @app.route("/")
 def index():
     data = load_data()
@@ -177,12 +225,23 @@ def exam_detail(exam_id):
 
 @app.route("/exam/<exam_id>/reanalyze", methods=["POST"])
 def reanalyze_exam(exam_id):
-    """Bu sinavi -ve onun AI icerigini- onbellekten degil, bastan analiz eder."""
+    """Bu sinavi -ve onun AI icerigini- onbellekten degil, bastan analiz eder.
+    Birden fazla zayif konu varsa, hepsi paralel uretilip 'hazir' hale getirilir."""
     try:
         content_generator.clear_cache_for_exam(exam_id)
         vision_extract.clear_cache_for_exam(exam_id)
         scraper.sync_all(headless=True, force_exam_ids=[exam_id])
-        flash("Sınav yeniden analiz edildi.", "success")
+
+        data = load_data()
+        exam = next(e for e in data["exams"] if e["id"] == exam_id)
+        grade = (data.get("profile") or {}).get("grade") or 8
+        weak = [w for w in analyzer.weak_topics(data) if w["exam_id"] == exam_id]
+        items, errors = generate_weak_topics_parallel(exam, weak, grade)
+
+        msg = f"Sınav yeniden analiz edildi, {len(items)} konu hazır."
+        if errors:
+            msg += f" {len(errors)} konu üretilemedi: {errors[0]}"
+        flash(msg, "error" if errors and not items else "success")
     except RuntimeError as e:
         flash(str(e), "error")
     except Exception as e:  # pragma: no cover - runtime feedback
@@ -278,26 +337,12 @@ def export_exam(exam_id):
     grade = (data.get("profile") or {}).get("grade") or 8
     weak = [w for w in analyzer.weak_topics(data) if w["exam_id"] == exam_id]
 
-    items = []
-    try:
-        for w in weak:
-            subj = next(s for s in exam["subjects"] if s["index"] == w["subject_index"])
-            wrong_questions = get_wrong_question_texts(exam_id, subj)
-            content = content_generator.generate_topic_content(
-                subject_name=w["subject_name"],
-                topic_name=w["topic"],
-                grade=grade,
-                student_score=w["student"],
-                peer_avg=w["peer_avg"],
-                exam_id=w["exam_id"],
-                subject_index=w["subject_index"],
-                kID=w["kID"],
-                wrong_questions=wrong_questions,
-            )
-            items.append({**w, "content": content, "wrong_questions": wrong_questions})
-    except RuntimeError as e:
-        flash(str(e), "error")
+    items, errors = generate_weak_topics_parallel(exam, weak, grade)
+    if not items and errors:
+        flash(errors[0], "error")
         return redirect(url_for("exam_detail", exam_id=exam_id))
+    if errors:
+        flash(f"{len(errors)} konu üretilemedi, rapor kalan {len(items)} konuyla oluşturuldu.", "error")
 
     out_path = DATA_DIR / "reports" / f"{exam_id}.docx"
     docx_export.build_exam_report(exam, items, out_path)

@@ -3,7 +3,7 @@ import json
 import os
 import re
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import anthropic
@@ -24,7 +24,8 @@ _BLOCK_LABELS = {
 
 def _log(msg):
     """Uzun suren AI uretimi sirasinda terminalde (konsol log) ilerlemeyi gosterir."""
-    print(f"[icerik-uretimi] {msg}", flush=True)
+    ts = datetime.now().strftime("%H:%M:%S")
+    print(f"[{ts}] [icerik-uretimi] {msg}", flush=True)
 
 PROMPT_TEMPLATE = """Sen deneyimli bir {grade}. sinif {subject_name} ogretmenisin. \
 Bir ogrenci son sinavda "{topic_name}" konusunda akranlarinin gerisinde kaldi \

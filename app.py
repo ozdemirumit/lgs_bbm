@@ -140,21 +140,25 @@ def export_exam(exam_id):
     weak = [w for w in analyzer.weak_topics(data) if w["exam_id"] == exam_id]
 
     items = []
-    for w in weak:
-        subj = next(s for s in exam["subjects"] if s["index"] == w["subject_index"])
-        wrong_questions = get_wrong_question_texts(exam_id, subj)
-        content = content_generator.generate_topic_content(
-            subject_name=w["subject_name"],
-            topic_name=w["topic"],
-            grade=grade,
-            student_score=w["student"],
-            peer_avg=w["peer_avg"],
-            exam_id=w["exam_id"],
-            subject_index=w["subject_index"],
-            kID=w["kID"],
-            wrong_questions=wrong_questions,
-        )
-        items.append({**w, "content": content, "wrong_questions": wrong_questions})
+    try:
+        for w in weak:
+            subj = next(s for s in exam["subjects"] if s["index"] == w["subject_index"])
+            wrong_questions = get_wrong_question_texts(exam_id, subj)
+            content = content_generator.generate_topic_content(
+                subject_name=w["subject_name"],
+                topic_name=w["topic"],
+                grade=grade,
+                student_score=w["student"],
+                peer_avg=w["peer_avg"],
+                exam_id=w["exam_id"],
+                subject_index=w["subject_index"],
+                kID=w["kID"],
+                wrong_questions=wrong_questions,
+            )
+            items.append({**w, "content": content, "wrong_questions": wrong_questions})
+    except RuntimeError as e:
+        flash(str(e), "error")
+        return redirect(url_for("exam_detail", exam_id=exam_id))
 
     out_path = DATA_DIR / "reports" / f"{exam_id}.docx"
     docx_export.build_exam_report(exam, items, out_path)

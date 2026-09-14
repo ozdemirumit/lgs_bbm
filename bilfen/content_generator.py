@@ -95,11 +95,19 @@ def generate_topic_content(
     )
 
     client = _client()
-    resp = client.messages.create(
-        model=MODEL,
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        resp = client.messages.create(
+            model=MODEL,
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.AuthenticationError:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY gecersiz. .env dosyasindaki anahtari "
+            "console.anthropic.com adresinden aldiginiz gecerli bir anahtarla degistirin."
+        )
+    except anthropic.APIError as e:
+        raise RuntimeError(f"Claude API hatasi: {e}")
     text = "".join(block.text for block in resp.content if block.type == "text")
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:

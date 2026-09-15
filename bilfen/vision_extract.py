@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+from json_repair import repair_json
+
 from .content_generator import MODEL, _client, _log
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -67,8 +69,13 @@ def extract_question_text(image_path, cache_key, force=False):
         raise RuntimeError("Vision yanitindan JSON cikarilamadi: " + text[:300])
     try:
         data = json.loads(match.group(0))
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Vision yaniti JSON olarak ayristirilamadi: {e}")
+    except json.JSONDecodeError:
+        try:
+            data = repair_json(match.group(0), return_objects=True)
+            if not isinstance(data, dict):
+                raise ValueError("onarilan JSON bir sozluk degil")
+        except Exception as e:
+            raise RuntimeError(f"Vision yaniti JSON olarak ayristirilamadi: {e}")
 
     cache_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return data

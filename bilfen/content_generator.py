@@ -7,6 +7,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import anthropic
+from json_repair import repair_json
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 GEN_DIR = DATA_DIR / "generated"
@@ -250,6 +251,17 @@ def generate_topic_content(
             _log(f"Basarili ({elapsed:.0f} sn): {len(data.get('sorular', []))} soru uretildi.")
             break
         except json.JSONDecodeError as e:
+            # Model bazen fazladan virgul/kacis hatasi gibi kucuk bozukluklar
+            # birakiyor (ozellikle HTML/SVG gomulu uzun yanitlarda); once
+            # onarmayi dene, olmazsa tekrar dene.
+            try:
+                data = repair_json(match.group(0), return_objects=True)
+                if not isinstance(data, dict) or "sorular" not in data:
+                    raise ValueError("onarilan JSON beklenen sekilde degil")
+                _log(f"Basarili ({elapsed:.0f} sn, JSON onarildi): {len(data.get('sorular', []))} soru uretildi.")
+                break
+            except Exception:
+                data = None
             _log(f"Yanit alindi ({elapsed:.0f} sn) ama JSON hatali: {e}")
             last_error = (
                 f"Model yaniti JSON olarak ayristirilamadi ({e})."

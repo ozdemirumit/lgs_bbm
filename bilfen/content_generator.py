@@ -47,10 +47,28 @@ adedi GECME). Sorularin yaklasik dortte biri, arastirdigin gercek LGS \
 sorularinin zorluk seviyesine/tarzina/soru kokenine (ornegin bir grafik \
 yorumlama, bir gunluk hayat problemi vb.) yakin olacak sekilde OZGUN olarak \
 yazilsin (gercek sorunun BIREBIR kopyasi OLMASIN, sadece ilham alinsin); \
-kalanlar konuyu pekistiren, kolaydan zora dogru siralanmis standart sorular \
-olsun. Her soru icin, gercek bir LGS sorusundan ilham alindiysa hangi \
-yila/tarza ait oldugunu kisaca belirt (alinmadiysa null birak). Her sorunun \
-dogru cevabini ve kisa cozum aciklamasini ekle.
+kalanlar da konuyu pekistiren, GERCEK SINAV ZORLUGUNDA sorular olsun (asagidaki \
+ZORLUK SEVIYESI bolumune bak - "kolaydan baslayip zora git" seklinde ISINMA \
+sorusu YOK, hepsi sinav seviyesinde). Her soru icin, gercek bir LGS sorusundan \
+ilham alindiysa hangi yila/tarza ait oldugunu kisaca belirt (alinmadiysa null \
+birak). Her sorunun dogru cevabini ve kisa cozum aciklamasini ekle.
+
+ZORLUK SEVIYESI - COK ONEMLI: Bu sorular bir SINAVDA (LGS/okul sinavi) \
+cikan gercek bir sorudan daha kolay OLMAMALI. Ozellikle su hatalardan kacin:
+- Tek adimda, dogrudan bir formul/kural uygulayarak cozulen "isinma" \
+sorulari YAZMA (orn. "5 sayinin ortalamasi kactir?" gibi duz/mekanik bir \
+soru LGS seviyesinde DEGILDIR).
+- Gercek LGS sorulari genelde COK ADIMLI olur: bir gunluk hayat/hikaye \
+baglami icerir, birden fazla kavrami bir arada test eder, bir tablo/grafik \
+yorumlamayi gerektirir ve secenekler arasinda ogrencinin SIK YAPTIGI \
+hatayi yansitan (yanlis islem sirasi, yanlis birim, kavram karisikligi \
+gibi) inandirici celdiriciler bulundurur - kolay elenecek/absurd secenekler \
+degil.
+- Eger yukarida ogrencinin gercekten yanlis yaptigi bir soru verilmisse, \
+uretecegin TUM sorular o sorunun zorlugundan DAHA KOLAY OLMAMALI; en az \
+ayni zorlukta, mumkunse ayni sayida cozum adimini gerektiren sorular olsun.
+- Butun sorular icin ayni yuksek zorluk seviyesini koru; "kolaydan zora" \
+diye kademelendirme yapma.
 
 GORSELLER - ONEMLI: Konu anlatiminda veya bir soruda tablo, sayi dogrusu, \
 geometrik sekil, grafik (sutun/cizgi/pasta) gibi gorsel bir oge GEREKIYORSA \

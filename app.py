@@ -43,13 +43,19 @@ def render_markdown(text):
     block_protected = []
     inline_protected = []
 
+    # NOT: yer tutucu index'i mutlaka bir '@@' ile sonlandirilmali - aksi
+    # halde ('ZZBLOCKZZ1' gibi) 10+ formul oldugunda 'ZZBLOCKZZ1' asagidaki
+    # gibi bir alt dize olarak 'ZZBLOCKZZ10','ZZBLOCKZZ11'...'ZZBLOCKZZ19'
+    # icinde de eslesip yanlislikla onlari da degistirir, sonda rastgele bir
+    # rakam (10'daki '0', 11'deki '1' vb.) metinde asili kalir. Bu gercekten
+    # yasandi: 10+ formullu uzun konu anlatimlarinda formuller bozuk cikiyordu.
     def _stash_block(m):
         block_protected.append(m.group(0))
-        return f"\n\nZZBLOCKZZ{len(block_protected) - 1}\n\n"
+        return f"\n\n@@BLOCK{len(block_protected) - 1}@@\n\n"
 
     def _stash_inline(m):
         inline_protected.append(m.group(0))
-        return f"ZZINLINEZZ{len(inline_protected) - 1}"
+        return f"@@INLINE{len(inline_protected) - 1}@@"
 
     text = _SVG_RE.sub(_stash_block, text)
     text = _DISPLAY_MATH_RE.sub(_stash_block, text)
@@ -61,10 +67,10 @@ def render_markdown(text):
         # chunk (LaTeX/SVG) '\t', '\1' gibi ters egik cizgili diziler icerebilir;
         # re.sub'a duz string olarak verilirse bunlari kacis dizisi sanip hata
         # verir, bu yuzden lambda ile degismeden eklenmesi saglaniyor.
-        html = re.sub(rf"<p>\s*ZZBLOCKZZ{i}\s*</p>", lambda m, c=chunk: c, html)
-        html = html.replace(f"ZZBLOCKZZ{i}", chunk)
+        html = re.sub(rf"<p>\s*@@BLOCK{i}@@\s*</p>", lambda m, c=chunk: c, html)
+        html = html.replace(f"@@BLOCK{i}@@", chunk)
     for i, chunk in enumerate(inline_protected):
-        html = html.replace(f"ZZINLINEZZ{i}", chunk)
+        html = html.replace(f"@@INLINE{i}@@", chunk)
     return html
 
 

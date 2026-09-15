@@ -82,6 +82,12 @@ acik renk zeminde koyu cizgiler/metinle, olcekli ve okunakli olsun.
 - Bir soru gorsel gerektiriyorsa, o sorunun JSON objesine "gorsel_html" alani \
 olarak bu HTML/SVG'yi ekle (gerekmiyorsa null birak). Anlatimdaki gorseller \
 dogrudan "anlatim" metninin icine markdown ile karisik HTML olarak gomulebilir.
+- COK ONEMLI: "soru" alaninin (sorunun metni) icine ASLA <table> veya <svg> \
+gibi HTML KOYMA - o alan SADECE duz metin/LaTeX icindir ve oldugu gibi \
+(HTML islenmeden) gosterilir, ham kod olarak gorunur. Tablo/sekil gereken \
+bir soruda "soru" alanina "Asagidaki tabloya gore..." gibi sadece yazi yaz, \
+tablonun/sekli kendisini SADECE "gorsel_html" alanina koy - bu ikisi ayri \
+alanlardir, birbirine karistirma.
 
 MATEMATIKSEL IFADELER - COK ONEMLI: Us (^), kok, kesir, alt simge iceren HER \
 IFADE, cumle icinde tek basina bir sayi/degisken bile olsa, MUTLAKA dolar \
@@ -127,12 +133,35 @@ def _ensure_math_wrapped(text):
     return "".join(pieces)
 
 
+_EMBEDDED_BLOCK_RE = re.compile(r"<table[\s\S]*?</table>|<svg[\s\S]*?</svg>")
+
+
+def _extract_embedded_html(text):
+    """'soru' gibi duz metin alanlarina gomulmus <table>/<svg> varsa (model
+    bunlari 'gorsel_html' alanina koymasi gerekirken metnin icine yazmis
+    olabilir) cikarir; boylece metin alaninda ham HTML kodu (bozuk) gorunmez.
+    (temiz_metin, cikarilan_html_veya_None) dondurur."""
+    if not text or ("<table" not in text and "<svg" not in text):
+        return text, None
+    found = []
+
+    def repl(m):
+        found.append(m.group(0))
+        return ""
+
+    cleaned = _EMBEDDED_BLOCK_RE.sub(repl, text)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip()
+    return cleaned, ("".join(found) if found else None)
+
+
 def _normalize_content(data):
     """Model bazen bir soru icin bir alani (ozellikle 'secenekler') eksik
     birakiyor - hele json-repair yarim kalan bir soruyu tam onaramayinca. Bu,
     sablonun cokmesine yol aciyordu (UndefinedError). Eksik/bozuk alanlari
     guvenli varsayilanlarla doldurur, eksigi telafi edilemeyen (soru metni
-    olmayan) sorulari tamamen atar."""
+    olmayan) sorulari tamamen atar. Ayrica 'soru' metnine yanlislikla
+    gomulmus HTML tablo/SVG varsa (dogrusu 'gorsel_html' alaninda olmasi)
+    cikarip oraya tasir - aksi halde ham HTML kodu metin olarak gorunurdu."""
     if not isinstance(data, dict):
         return {"anlatim": "", "sorular": []}
     data.setdefault("anlatim", "")
@@ -146,13 +175,15 @@ def _normalize_content(data):
         secenekler = q.get("secenekler")
         if not isinstance(secenekler, dict):
             secenekler = {}
+        soru_text, embedded_html = _extract_embedded_html(q.get("soru") or "")
+        gorsel_html = q.get("gorsel_html") or embedded_html
         normalized.append({
-            "soru": q.get("soru") or "",
+            "soru": soru_text,
             "secenekler": secenekler,
             "dogru_cevap": q.get("dogru_cevap") or "?",
             "cozum": q.get("cozum") or "",
             "kaynak_notu": q.get("kaynak_notu"),
-            "gorsel_html": q.get("gorsel_html"),
+            "gorsel_html": gorsel_html,
         })
     data["sorular"] = normalized
     return data

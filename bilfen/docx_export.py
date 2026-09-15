@@ -142,6 +142,9 @@ def build_exam_report(exam, weak_topics_with_content, output_path):
                 image_path = wq.get("image_path")
                 if image_path and Path(image_path).exists():
                     _add_picture_safe(doc, image_path)
+                if wq.get("hata_analizi"):
+                    p = doc.add_paragraph()
+                    p.add_run(f"Olasi hata analizi: {wq['hata_analizi']}").italic = True
 
         content = item["content"]
         doc.add_heading("Konu Anlatimi", level=3)

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from json_repair import repair_json
 
-from .content_generator import MODEL, _client, _log
+from .content_generator import MODEL, _client, _ensure_math_wrapped, _log
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 CACHE_DIR = DATA_DIR / "generated" / "questions"
@@ -32,12 +32,23 @@ sadece basili orijinal degerleri kullan.
 
 Ogretmenin dogru cevabi daire ici alma gibi isaretlemesi varsa bunu ayrica belirt.
 
+Ayrica, bu soru turunde ogrencilerin EN SIK yaptigi hatayi kisaca analiz et: \
+dogru cevaba ulasmak icin gereken mantigi/adimlari dusun ve bu tur bir soruda \
+bir ogrencinin nerede yanilabilecegini (yanlis islem sirasi, bir kavrami \
+karistirma, isaret/birim hatasi, eksik adim vb.) 1-2 cumleyle acikla. Bu, \
+ogrenciye kendi hatasini anlamasi icin bir ipucu olacak - "muhtemelen ...  \
+hatasini yapmis olabilirsin" tarzinda, ogrenciye hitaben yaz.
+
+Matematiksel ifadeler icin LaTeX kullan (satir ici icin $...$, orn. $2^6$) - \
+duz metinle ("2^6" gibi, dolarsiz) yazma, bu bozuk gorunur.
+
 SADECE asagidaki JSON formatinda yanit ver, baska aciklama ekleme:
 {
   "okunabildi": true,
   "soru": "soru metni (SADECE basili/orijinal kisim)",
   "secenekler": {"A": "...", "B": "...", "C": "...", "D": "..."},
-  "isaretli_dogru_cevap": "A"
+  "isaretli_dogru_cevap": "A",
+  "hata_analizi": "Bu soru turunde ogrencilerin en sik yaptigi hatanin kisa analizi"
 }
 Gorselde net bir soru secilemiyorsa "okunabildi": false yap, digerlerini bos birak."""
 
@@ -89,6 +100,13 @@ def extract_question_text(image_path, cache_key, force=False):
                 raise ValueError("onarilan JSON bir sozluk degil")
         except Exception as e:
             raise RuntimeError(f"Vision yaniti JSON olarak ayristirilamadi: {e}")
+
+    if data.get("soru"):
+        data["soru"] = _ensure_math_wrapped(data["soru"])
+    if isinstance(data.get("secenekler"), dict):
+        for k, v in list(data["secenekler"].items()):
+            if isinstance(v, str):
+                data["secenekler"][k] = _ensure_math_wrapped(v)
 
     cache_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return data

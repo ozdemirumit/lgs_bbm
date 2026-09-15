@@ -83,11 +83,16 @@ acik renk zeminde koyu cizgiler/metinle, olcekli ve okunakli olsun.
 olarak bu HTML/SVG'yi ekle (gerekmiyorsa null birak). Anlatimdaki gorseller \
 dogrudan "anlatim" metninin icine markdown ile karisik HTML olarak gomulebilir.
 
-MATEMATIKSEL IFADELER: Tum formulleri/denklemleri LaTeX ile yaz - satir ici \
-icin tek dolar isareti ($a^2 + b^2 = c^2$), ayri bir satirda gosterilecek \
-formuller icin cift dolar isareti ($$...$$) kullan. Bu, sayfada otomatik \
-olarak duzgun matematik gosterimine cevrilir; kesir, us, kok, alt simge gibi \
-her sey icin LaTeX kullan, duz metinle ("1/2" gibi) yazma.
+MATEMATIKSEL IFADELER - COK ONEMLI: Us (^), kok, kesir, alt simge iceren HER \
+IFADE, cumle icinde tek basina bir sayi/degisken bile olsa, MUTLAKA dolar \
+isareti icine alinmalidir - istisna YOK. Ornegin "2^6 km" DEGIL, "$2^6$ km" \
+yaz; "3 uzeri 2" yerine "$3^2$" yaz. Satir ici icin tek dolar isareti \
+($a^2 + b^2 = c^2$), ayri bir satirda gosterilecek formuller icin cift dolar \
+isareti ($$...$$) kullan. Soru metninde, seceneklerde (A/B/C/D) ve cozumde \
+gecen HER us/kok/kesir/alt simge de ayni sekilde dolar isareti icinde \
+olmali - sadece anlatim bolumunde degil. Duz metinle ("2^6" veya "1/2" gibi, \
+dolarsiz) YAZMA; dolarsiz yazilan bir "^" veya "_" oldugu gibi (ham metin \
+olarak) gorunur ve BOZUK gorunur.
 
 SADECE asagidaki JSON formatinda yanit ver, baska hicbir aciklama veya metin ekleme \
 (web search sonuclarini veya dusunce surecini JSON disinda yazma):
@@ -100,6 +105,46 @@ sorusundan ilham alindi, ya da null", "gorsel_html": "gerekiyorsa HTML tablo/SVG
 yoksa null"}}
   ]
 }}"""
+
+
+_BARE_EXP_RE = re.compile(r"(?:\([^()]*\)|[A-Za-z0-9]+)\^-?(?:\{[^}]*\}|[A-Za-z0-9]+)")
+_MATH_SPAN_RE = re.compile(r"\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$")
+
+
+def _ensure_math_wrapped(text):
+    """Model bazen '2^6' gibi bir ussu dolar isareti icine almayi unutuyor;
+    boyle kalirsa MathJax onu islemez, ham metin (bozuk) olarak gorunur. Zaten
+    $...$ / $$...$$ icinde olmayan cikci us ifadelerini otomatik $...$ ile sarar."""
+    if not text or "^" not in text:
+        return text
+    parts = _MATH_SPAN_RE.split(text)
+    spans = _MATH_SPAN_RE.findall(text)
+    pieces = []
+    for i, part in enumerate(parts):
+        pieces.append(_BARE_EXP_RE.sub(lambda m: f"${m.group(0)}$", part))
+        if i < len(spans):
+            pieces.append(spans[i])
+    return "".join(pieces)
+
+
+def _fix_bare_math(data):
+    if not isinstance(data, dict):
+        return data
+    if data.get("anlatim"):
+        data["anlatim"] = _ensure_math_wrapped(data["anlatim"])
+    for q in data.get("sorular", []) or []:
+        if not isinstance(q, dict):
+            continue
+        if q.get("soru"):
+            q["soru"] = _ensure_math_wrapped(q["soru"])
+        if q.get("cozum"):
+            q["cozum"] = _ensure_math_wrapped(q["cozum"])
+        secenekler = q.get("secenekler")
+        if isinstance(secenekler, dict):
+            for k, v in list(secenekler.items()):
+                if isinstance(v, str):
+                    secenekler[k] = _ensure_math_wrapped(v)
+    return data
 
 
 def _format_wrong_questions_block(wrong_questions):
@@ -184,7 +229,7 @@ def generate_topic_content(
     if exam_id is not None and subject_index is not None and kID is not None:
         cache_path = _cache_path(exam_id, subject_index, kID)
         if cache_path.exists() and not force:
-            return json.loads(cache_path.read_text(encoding="utf-8"))
+            return _fix_bare_math(json.loads(cache_path.read_text(encoding="utf-8")))
 
     this_year = date.today().year
     prompt = PROMPT_TEMPLATE.format(
@@ -272,6 +317,8 @@ def generate_topic_content(
     if data is None:
         _log("Uretim basarisiz oldu (3 deneme de basarisiz).")
         raise RuntimeError(last_error or "Model yanitindan icerik uretilemedi.")
+
+    data = _fix_bare_math(data)
 
     if cache_path:
         cache_path.write_text(

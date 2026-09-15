@@ -107,10 +107,12 @@ def question_image(filename):
     return send_from_directory(IMAGES_DIR, filename)
 
 
-def get_wrong_question_texts(exam_id, subj):
+def get_wrong_question_texts(exam_id, subj, force=False):
     """Bir dersteki tum yanlis sorularin (varsa) goruntudeki metnini cikarir.
     Gercek ekran goruntusunun URL'sini de ekler (tablo/grafik gibi gorseller
     metne cikan ozette kaybolabildigi icin, orijinal goruntu de gosterilir).
+    force=True ise (ornegin 'Yeniden Uret'te) onbellekteki -yanlis okunmus
+    olabilecek- metin de tazelenir, sadece AI icerigi degil.
     Not: siteden soru<->konu eslesmesi gelmez; bu yuzden birden fazla zayif
     konu varsa ayni dersin yanlislarinin tumu ortak baglam olarak kullanilir."""
     results = []
@@ -119,7 +121,7 @@ def get_wrong_question_texts(exam_id, subj):
             continue
         try:
             data = vision_extract.extract_question_text(
-                q["image"], cache_key=f"{exam_id}_{subj['index']}_{q['no']}"
+                q["image"], cache_key=f"{exam_id}_{subj['index']}_{q['no']}", force=force
             )
         except Exception:
             continue
@@ -302,7 +304,7 @@ def _load_topic_context(exam_id, subject_index, kID, force=False):
         if v is not None
     ]
     peer_avg = sum(peer_scores) / len(peer_scores) if peer_scores else 0
-    wrong_questions = get_wrong_question_texts(exam_id, subj)
+    wrong_questions = get_wrong_question_texts(exam_id, subj, force=force)
     content = content_generator.generate_topic_content(
         subject_name=subj["name"],
         topic_name=topic["name"],

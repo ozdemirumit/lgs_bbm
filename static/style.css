@@ -18,3 +18,48 @@ body {
   max-width: 100%;
   height: auto;
 }
+
+/* Yazdirma / PDF olarak kaydetme gorunumu */
+@page {
+  size: A4;
+  margin: 1.5cm;
+}
+
+.print-answer-key {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .print-questions {
+    column-count: 2;
+    column-gap: 2rem;
+  }
+
+  .print-questions > .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+
+  .print-questions details {
+    display: none;
+  }
+
+  .print-answer-key {
+    display: block;
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-answer-key ul {
+    column-count: 2;
+    column-gap: 2rem;
+    list-style: none;
+    padding: 0;
+  }
+}

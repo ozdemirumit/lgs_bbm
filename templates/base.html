@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.js" id="MathJax-script" async></script>
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark mb-4">
+<nav class="navbar navbar-dark bg-dark mb-4 d-print-none">
   <div class="container">
     <a class="navbar-brand" href="{{ url_for('index') }}">Bilfen Hata Analizi</a>
   </div>
@@ -25,7 +25,7 @@
 <div class="container mb-5">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, msg in messages %}
-      <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">{{ msg }}</div>
+      <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} d-print-none">{{ msg }}</div>
     {% endfor %}
   {% endwith %}
   {% block content %}{% endblock %}

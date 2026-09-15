@@ -86,5 +86,8 @@
 </div>
 {% endif %}
 
-<a href="{{ url_for('exam_detail', exam_id=exam.id) }}" class="btn btn-secondary d-print-none">Geri Dön</a>
+<div class="d-flex gap-2 d-print-none">
+  <a href="{{ url_for('exam_detail', exam_id=exam.id) }}" class="btn btn-secondary">← Sınava Dön</a>
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Ana Sayfa</a>
+</div>
 {% endblock %}

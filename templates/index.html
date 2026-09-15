@@ -20,7 +20,8 @@
 
 {% if login_in_progress %}
   <div class="alert alert-info">
-    Açılan tarayıcı penceresinde kendi kullanıcı adı/şifrenizle giriş yapın. Bitirince
+    Açılan <strong>yeni</strong> tarayıcı penceresinde kendi kullanıcı adı/şifrenizle giriş yapın.
+    Bitirince o pencereyi kapatıp <strong>bu sekmeye geri dönün</strong> ve
     yukarıdaki <strong>"Girişi Tamamladım"</strong> butonuna basın.
   </div>
 {% elif not has_session %}
@@ -51,6 +52,7 @@
     </div>
     <div class="col-md-7">
       {% if selected_exam %}
+        <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary mb-2">← Tüm Sınavlara Dön</a>
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>
             <h2 class="h5 mb-0">{{ selected_exam.name }}</h2>

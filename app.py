@@ -234,7 +234,7 @@ def index():
 @app.route("/login/start", methods=["POST"])
 def login_start():
     login_flow.start()
-    flash("Açılan tarayıcı penceresinde kendi kullanıcı adı/şifrenizle giriş yapın, sonra aşağıdaki 'Girişi Tamamladım' butonuna basın.", "success")
+    flash("Açılan YENİ tarayıcı penceresinde kendi kullanıcı adı/şifrenizle giriş yapın. Bitirince o pencereyi kapatıp BU SEKMEYE (tarayıcınızda bu web sayfasının açık olduğu sekmeye/pencereye) geri dönün ve aşağıdaki 'Girişi Tamamladım' butonuna basın.", "success")
     return redirect(url_for("index"))
 
 

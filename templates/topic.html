@@ -25,7 +25,7 @@
     {% for wq in wrong_questions %}
       <p><strong>{{ loop.index }}. {{ wq.soru }}</strong></p>
       <ul class="list-unstyled">
-        {% for key, val in wq.secenekler.items() %}
+        {% for key, val in (wq.secenekler or {}).items() %}
           <li>{{ key }}) {{ val }}{% if wq.isaretli_dogru_cevap == key %} <span class="badge bg-success">doğru cevap</span>{% endif %}</li>
         {% endfor %}
       </ul>
@@ -63,7 +63,7 @@
         <div class="my-2">{{ q.gorsel_html | safe }}</div>
       {% endif %}
       <ul class="list-unstyled">
-        {% for key, val in q.secenekler.items() %}
+        {% for key, val in (q.secenekler or {}).items() %}
           <li>{{ key }}) {{ val }}</li>
         {% endfor %}
       </ul>

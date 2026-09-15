@@ -127,6 +127,37 @@ def _ensure_math_wrapped(text):
     return "".join(pieces)
 
 
+def _normalize_content(data):
+    """Model bazen bir soru icin bir alani (ozellikle 'secenekler') eksik
+    birakiyor - hele json-repair yarim kalan bir soruyu tam onaramayinca. Bu,
+    sablonun cokmesine yol aciyordu (UndefinedError). Eksik/bozuk alanlari
+    guvenli varsayilanlarla doldurur, eksigi telafi edilemeyen (soru metni
+    olmayan) sorulari tamamen atar."""
+    if not isinstance(data, dict):
+        return {"anlatim": "", "sorular": []}
+    data.setdefault("anlatim", "")
+    sorular = data.get("sorular")
+    if not isinstance(sorular, list):
+        sorular = []
+    normalized = []
+    for q in sorular:
+        if not isinstance(q, dict) or not q.get("soru"):
+            continue
+        secenekler = q.get("secenekler")
+        if not isinstance(secenekler, dict):
+            secenekler = {}
+        normalized.append({
+            "soru": q.get("soru") or "",
+            "secenekler": secenekler,
+            "dogru_cevap": q.get("dogru_cevap") or "?",
+            "cozum": q.get("cozum") or "",
+            "kaynak_notu": q.get("kaynak_notu"),
+            "gorsel_html": q.get("gorsel_html"),
+        })
+    data["sorular"] = normalized
+    return data
+
+
 def _fix_bare_math(data):
     if not isinstance(data, dict):
         return data
@@ -229,7 +260,7 @@ def generate_topic_content(
     if exam_id is not None and subject_index is not None and kID is not None:
         cache_path = _cache_path(exam_id, subject_index, kID)
         if cache_path.exists() and not force:
-            return _fix_bare_math(json.loads(cache_path.read_text(encoding="utf-8")))
+            return _fix_bare_math(_normalize_content(json.loads(cache_path.read_text(encoding="utf-8"))))
 
     this_year = date.today().year
     prompt = PROMPT_TEMPLATE.format(
@@ -318,7 +349,7 @@ def generate_topic_content(
         _log("Uretim basarisiz oldu (3 deneme de basarisiz).")
         raise RuntimeError(last_error or "Model yanitindan icerik uretilemedi.")
 
-    data = _fix_bare_math(data)
+    data = _fix_bare_math(_normalize_content(data))
 
     if cache_path:
         cache_path.write_text(

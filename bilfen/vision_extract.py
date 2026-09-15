@@ -101,6 +101,12 @@ def extract_question_text(image_path, cache_key, force=False):
         except Exception as e:
             raise RuntimeError(f"Vision yaniti JSON olarak ayristirilamadi: {e}")
 
+    if not isinstance(data.get("secenekler"), dict):
+        data["secenekler"] = {}
+    data.setdefault("soru", "")
+    data.setdefault("hata_analizi", None)
+    data.setdefault("isaretli_dogru_cevap", None)
+
     if data.get("soru"):
         data["soru"] = _ensure_math_wrapped(data["soru"])
     if isinstance(data.get("secenekler"), dict):

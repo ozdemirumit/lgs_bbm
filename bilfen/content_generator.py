@@ -70,6 +70,14 @@ uretecegin TUM sorular o sorunun zorlugundan DAHA KOLAY OLMAMALI; en az \
 ayni zorlukta, mumkunse ayni sayida cozum adimini gerektiren sorular olsun.
 - Butun sorular icin ayni yuksek zorluk seviyesini koru; "kolaydan zora" \
 diye kademelendirme yapma.
+- SAYILAR GERCEKCI OLSUN: Sorularda kullandigin sayilar/degerler rastgele \
+veya anlamsiz olmasin - gercek hayatta/gercek bir sinav sorusunda \
+karsilasilabilecek makul, mantikli degerler sec (orn. bir bakteri kolonisi \
+icin 3, 9, 27 gibi mantikli bir buyume orani; bir tarla/bina olcusu icin \
+gercekci metrekare/metre degerleri; yas, fiyat, mesafe gibi degerler \
+gercek hayatla tutarli olsun). Hesaplama sonucu da (varsa) tam sayi veya \
+sade bir kesir gibi "temiz" bir sonuc olmali - cirkin/anlamsiz ondalikli \
+sonuclar cikaran degerler SECME.
 
 GORSELLER - ONEMLI: Konu anlatiminda veya bir soruda tablo, sayi dogrusu, \
 geometrik sekil, grafik (sutun/cizgi/pasta) gibi gorsel bir oge GEREKIYORSA \

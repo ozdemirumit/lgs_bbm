@@ -18,30 +18,6 @@
 <div class="alert alert-warning d-print-none">{{ error }}</div>
 {% endif %}
 
-{% if wrong_questions %}
-<div class="card mb-4 border-danger">
-  <div class="card-header bg-danger text-white">Gerçekten Yanlış Yaptığın Soru(lar)</div>
-  <div class="card-body">
-    {% for wq in wrong_questions %}
-      <p><strong>{{ loop.index }}. {{ wq.soru }}</strong></p>
-      <ul class="list-unstyled">
-        {% for key, val in (wq.secenekler or {}).items() %}
-          <li>{{ key }}) {{ val }}{% if wq.isaretli_dogru_cevap == key %} <span class="badge bg-success">doğru cevap</span>{% endif %}</li>
-        {% endfor %}
-      </ul>
-      {% if wq.image_url %}
-        <p class="text-muted small mb-1">Orijinal soru görseli (tablo/şekil varsa burada görünür):</p>
-        <img src="{{ wq.image_url }}" class="img-fluid border rounded mb-3" alt="Yanlış yapılan sorunun video çözümünden alınan görseli">
-      {% endif %}
-      {% if wq.hata_analizi %}
-        <div class="alert alert-warning py-2 px-3 mb-3"><strong>Olası hata analizi:</strong> {{ wq.hata_analizi }}</div>
-      {% endif %}
-      {% if not loop.last %}<hr>{% endif %}
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
 {% if content %}
 <div class="card mb-4">
   <div class="card-body">
@@ -83,6 +59,30 @@
       <li>{{ loop.index }}. {{ q.dogru_cevap }}</li>
     {% endfor %}
   </ul>
+</div>
+{% endif %}
+
+{% if wrong_questions %}
+<div class="card mb-4 border-danger">
+  <div class="card-header bg-danger text-white">Gerçekten Yanlış Yaptığın Soru(lar)</div>
+  <div class="card-body">
+    {% for wq in wrong_questions %}
+      <p><strong>{{ loop.index }}. {{ wq.soru }}</strong></p>
+      <ul class="list-unstyled">
+        {% for key, val in (wq.secenekler or {}).items() %}
+          <li>{{ key }}) {{ val }}{% if wq.isaretli_dogru_cevap == key %} <span class="badge bg-success">doğru cevap</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% if wq.image_url %}
+        <p class="text-muted small mb-1">Orijinal soru görseli (tablo/şekil varsa burada görünür):</p>
+        <img src="{{ wq.image_url }}" class="img-fluid border rounded mb-3" alt="Yanlış yapılan sorunun video çözümünden alınan görseli">
+      {% endif %}
+      {% if wq.hata_analizi %}
+        <div class="alert alert-warning py-2 px-3 mb-3"><strong>Olası hata analizi:</strong> {{ wq.hata_analizi }}</div>
+      {% endif %}
+      {% if not loop.last %}<hr>{% endif %}
+    {% endfor %}
+  </div>
 </div>
 {% endif %}
 
